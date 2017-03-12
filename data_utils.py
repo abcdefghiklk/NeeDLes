@@ -17,18 +17,20 @@ def convert_to_input(bug_contents, code_contents, vocabulary_size, max_lstm_leng
 
     if network_type == "lstm":
         bug_seq = tokenizer.texts_to_sequences(bug_contents)
-        code_index_list = []
-        overall_code_seq = [0]
+        code_index_list = [0]
+        overall_code_seq = []
         code_index = 0
         for one_file in code_contents:
             methods = one_file.split('\t')
             for one_method in methods:
                 if len(one_method)>0:
-                    overall_code_seq.append(tokenizer.texts_to_sequences(one_method))
+                    one_method_seq = tokenizer.texts_to_sequences([one_method])
+                    overall_code_seq.append(one_method_seq[0])
                     code_index = code_index+1
             code_index_list.append(code_index)
 
         #code_seq = tokenizer.texts_to_sequences(code_contents)
+
         zero_padded_seq = pad_sequences(bug_seq+overall_code_seq, maxlen =max_lstm_length ,padding = 'post', truncating='post')
         zero_padded_bug_seq = zero_padded_seq[0:len(bug_seq)]
 

@@ -106,7 +106,7 @@ def main_siamese_lstm(bug_file_path, code_file_path, oracle_file_path, evaluatio
 
     #training the model with the training data
     print("training lstm siamese network:")
-    model.fit([training_bug_seq,training_bug_seq.reverse(),training_code_seq,training_code_seq.reverse()],training_data[2], nb_epoch = epoch_num,batch_size = nb_batch_size)
+    model.fit([training_bug_seq,reverse_seq(training_bug_seq),training_code_seq,reverse_seq(training_code_seq)],training_data[2], nb_epoch = epoch_num,batch_size = nb_batch_size)
     print("finished training lstm siamese network.")
 
     #predicting on the test data
@@ -119,7 +119,7 @@ def main_siamese_lstm(bug_file_path, code_file_path, oracle_file_path, evaluatio
             #obtain the prediction score for each method
             scores = []
             for one_code_seq in range(method_index_list[i], method_index_list[i+1]):
-                scores.append(model.predict([one_bug_seq,one_bug_seq.reverse(),one_code_seq,one_code_seq.reverse()], batch_size = 1))
+                scores.append(model.predict([one_bug_seq,reverse_seq(one_bug_seq),one_code_seq,reverse_seq(one_code_seq)], batch_size = 1))
 
             #Here we can define different strategies from the method scores to the file score, here we only consider the average as a start
             one_bug_prediction.append(np.mean(scores))

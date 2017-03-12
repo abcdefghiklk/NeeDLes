@@ -155,8 +155,8 @@ def test_pad_sequences():
 if __name__ == '__main__':
     #test_siamese_lstm()
     #test_pad_sequences()
-    a=[1,2,3,4]
-    b=np.mean(a)
+    a=[[[1,2],2,3,4],[],[2,3,4]]
+    b = reverse_seq(a)
     print(b)
     #a=[[1,2,3],[3,4,5,4]]
     #b=[[5,7,7,8,1],[2,9,9],[4,4]]
