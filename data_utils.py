@@ -20,13 +20,32 @@ def convert_to_input(bug_contents, code_contents, vocabulary_size, max_lstm_leng
         code_index_list = [0]
         overall_code_seq = []
         code_index = 0
+        doc_num = 10
         for one_file in code_contents:
-            methods = one_file.split('\t')
-            for one_method in methods:
-                if len(one_method)>0:
-                    one_method_seq = tokenizer.texts_to_sequences([one_method])
-                    overall_code_seq.append(one_method_seq[0])
-                    code_index = code_index+1
+            one_file_seq = tokenizer.texts_to_sequences([one_file])
+            #if the whole file is shorter than the length, then use the whole file content
+            if len(one_file_seq[0]) < max_lstm_length:
+                overall_code_seq.append(one_file_seq[0])
+                code_index = code_index + 1
+            #else use the top-10 documents to represent the whole file
+            else:
+                doc_seq_list = []
+                lengths = []
+                methods = one_file.split('\t')
+                for one_method in methods:
+                    if len(one_method)>0:
+                        one_method_seq = tokenizer.texts_to_sequences([one_method])
+                        lengths.append(len(one_method_seq[0]))
+                        doc_seq_list.append(one_method_seq[0])
+                if len(lengths) < doc_num:
+                    overall_code_seq = overall_code_seq+doc_seq_list
+                    code_index = code_index + len(lengths)
+                else:
+                    length_descend_order = [i[0] for i in sorted(enumerate(lengths), key=lambda x:x[1], reverse=True)]
+                    for i in range(doc_num):
+                        overall_code_seq.append(doc_seq_list[length_descend_order[i]])
+                    code_index = code_index + doc_num
+
             code_index_list.append(code_index)
 
         #code_seq = tokenizer.texts_to_sequences(code_contents)
@@ -59,7 +78,7 @@ def convert_to_input(bug_contents, code_contents, vocabulary_size, max_lstm_leng
 def split_samples(bug_seq,code_seq,method_index_list,oracle,ratio = 0.8):
 
     bug_num = len(bug_seq)
-    training_size = math.floor(bug_num * ratio)
+    training_size = int(math.floor(bug_num * ratio))
     bug_train_data = []
     code_train_data = []
     rel_train_data = []
