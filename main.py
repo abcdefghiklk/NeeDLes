@@ -118,7 +118,8 @@ def main_siamese_lstm(bug_file_path, code_file_path, oracle_file_path, evaluatio
         for i in range(0,len(method_index_list)-1):
             #obtain the prediction score for each method
             scores = []
-            for one_code_seq in range(method_index_list[i], method_index_list[i+1]):
+            for one_code_index in range(method_index_list[i], method_index_list[i+1]):
+                one_code_seq = np.asarray(code_seq[one_code_index])
                 scores.append(model.predict([one_bug_seq,reverse_seq(one_bug_seq),one_code_seq,reverse_seq(one_code_seq)], batch_size = 1))
 
             #Here we can define different strategies from the method scores to the file score, here we only consider the average as a start

@@ -101,7 +101,7 @@ def split_samples(bug_seq,code_seq,method_index_list,oracle,ratio = 0.8):
                 rel_train_data.append(0)
 
     #rel_train_data = to_categorical(rel_train_data)
-    return([bug_train_data,code_train_data,rel_train_data],[bug_test_data,positive_index_test_data])
+    return([np.asarray(bug_train_data),np.asarray(code_train_data),np.asarray(rel_train_data)],[np.asarray(bug_test_data),np.asarray(positive_index_test_data)])
 
 def transform_to_one_hot(text_seq_list,vocabulary_size):
     output_seq_list=[]
