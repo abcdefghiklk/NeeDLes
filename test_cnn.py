@@ -16,6 +16,7 @@ from random import randint
 import numpy as np
 import math
 import codecs
+import os
 import argparse
 
 def batch_gen(X):
@@ -180,15 +181,24 @@ if __name__ == '__main__':
     oracle_path = "C:/Users/dell/Dropbox/NeeDLes/data/Hyloc_data/Tomcat_oracle"
     bug_path = "C:/Users/dell/Dropbox/NeeDLes/data/Hyloc_data/Tomcat_bug_content"
 
-    code_contents = load_contents(code_path)
-    tokenizer = text.Tokenizer(nb_words = 20)
-    tokenizer.fit_on_texts(code_contents)
+    model_dir_path = "model"
+    if not os.path.isdir(model_dir_path):
+        os.mkdir(model_dir_path)
 
-    neg_method_list = get_top_methods_in_file(code_contents[0], 20, 5, tokenizer)
-    print(neg_method_list)
-    for one_method in neg_method_list:
+    for i in range(10):
+        file_path = os.path.join(model_dir_path, "epoch_{}".format(i))
+        data_in = codecs.open(file_path,'w')
+        data_in.write("hello!")
+        data_in.close()
+    #code_contents = load_contents(code_path)
+    #tokenizer = text.Tokenizer(nb_words = 20)
+    #tokenizer.fit_on_texts(code_contents)
+
+    #neg_method_list = get_top_methods_in_file(code_contents[0], 20, 5, tokenizer)
+    #print(neg_method_list)
+    #for one_method in neg_method_list:
         #print(one_method)
-        convert_to_lstm_input_form(one_method, tokenizer,20, 20)
+    #   convert_to_lstm_input_form(one_method, tokenizer,20, 20)
 #    oracle_list = read_oracle(oracle_path)
 #    rel_methods = load_relevant_methods(method_path)
 #    tokenizer = text.Tokenizer(nb_words = 20)

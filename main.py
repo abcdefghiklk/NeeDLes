@@ -20,8 +20,10 @@ import argparse
 from argument_parser import *
 
 
-def main_siamese_lstm(bug_contents_path, code_contents_path, file_oracle_path, method_oracle_path, evaluation_file_path, vocabulary_size, lstm_core_length, lstm_seq_length = 200, neg_method_num = 10, split_ratio = 0.8, activation_function = 'tanh', inner_activation_function = 'hard_sigmoid', distance_function = 'cos', initializer = 'glorot_uniform', inner_initializer = 'orthogonal', regularizer = None, optimizer = RMSprop(lr=0.001, rho = 0.9, epsilon=1e-8, decay=0.0), dropout = 0.0, epoch_num = 100, k_value = 10, rel_threshold = 0.65):
+def main_siamese_lstm(bug_contents_path, code_contents_path, file_oracle_path, method_oracle_path, model_dir_path, evaluation_file_path, vocabulary_size, lstm_core_length, lstm_seq_length = 200, neg_method_num = 10, split_ratio = 0.8, activation_function = 'tanh', inner_activation_function = 'hard_sigmoid', distance_function = 'cos', initializer = 'glorot_uniform', inner_initializer = 'orthogonal', regularizer = None, optimizer = RMSprop(lr=0.001, rho = 0.9, epsilon=1e-8, decay=0.0), dropout = 0.0, epoch_num = 100, k_value = 10, rel_threshold = 0.65):
 
+    if not os.path.isdir(model_dir_path):
+        os.mkdir(model_dir_path)
     #method_oracle_path = "C:/Users/dell/Dropbox/NeeDLes/data/Hyloc_data/tomcat_relevant_methods.txt"
 
     #loading data from file
@@ -38,6 +40,13 @@ def main_siamese_lstm(bug_contents_path, code_contents_path, file_oracle_path, m
 
     print("building lstm siamese network:")
     model = siamese_lstm(lstm_seq_length, vocabulary_size, lstm_core_length, activation_function = activation_function, inner_activation_function = inner_activation_function, distance_function = distance_function, initializer = initializer, inner_initializer = inner_initializer, regularizer = regularizer, optimizer = optimizer, dropout = dropout)
+
+    #save the model structure to file
+    model_structure_path = os.path.join(model_dir_path, "model_structure")
+    json_string = model.to_json()
+    data_out = codecs.open(model_structure_path,'w')
+    data_out.write(json_string)
+    data_out.close()
     print("finished building lstm siamese network.")
 
 
@@ -47,8 +56,11 @@ def main_siamese_lstm(bug_contents_path, code_contents_path, file_oracle_path, m
         batch_index = 1
         for bug_batch, code_batch, label_batch in batch_gen(bug_contents, code_contents, file_oracle, method_oracle, tokenizer, vocabulary_size, lstm_seq_length, nb_train_bug, neg_method_num):
             print("training batch {}, size {}".format(batch_index, len(bug_batch)))
-            batch_index = batch_index + 1
             model.train_on_batch([bug_batch, reverse_seq(bug_batch), code_batch, reverse_seq(code_batch)], label_batch)
+            batch_index = batch_index + 1
+        #save the model weights after this epoch to file
+        one_epoch_weight_path = os.path.join(model_dir_path, "weight_epoch_{}".format(epoch))
+        model.save_weights(one_epoch_weight_path)
     print("finished training lstm siamese network.")
 
     #predicting on the test data
@@ -98,7 +110,7 @@ def generate_predictions(model, bug_contents, code_contents, file_oracle, method
 def main():
     args = parseArgs();
     optimizer = parse_optimizer(args)
-    main_siamese_lstm(args.bug_contents_path, args.code_contents_path, args.file_oracle_path, args.method_oracle_path, args.evaluation_path, args.vocabulary_size, args.lstm_core_length, lstm_seq_length = args.lstm_seq_length, neg_method_num = args.neg_method_num, split_ratio = args.split_ratio, activation_function = args.activation_function, inner_activation_function = args.inner_activation_function, distance_function = args.distance_function, initializer = args.initializer, inner_initializer = args.inner_initializer, regularizer = args.regularizer, optimizer = optimizer, dropout = args.dropout, epoch_num = args.epoch_num, k_value = args.k_value, rel_threshold = args.rel_threshold)
+    main_siamese_lstm(args.bug_contents_path, args.code_contents_path, args.file_oracle_path, args.method_oracle_path, args.model_dir_path, args.evaluation_path, args.vocabulary_size, args.lstm_core_length, lstm_seq_length = args.lstm_seq_length, neg_method_num = args.neg_method_num, split_ratio = args.split_ratio, activation_function = args.activation_function, inner_activation_function = args.inner_activation_function, distance_function = args.distance_function, initializer = args.initializer, inner_initializer = args.inner_initializer, regularizer = args.regularizer, optimizer = optimizer, dropout = args.dropout, epoch_num = args.epoch_num, k_value = args.k_value, rel_threshold = args.rel_threshold)
 if __name__ == '__main__':
     start = time.clock()
     main()

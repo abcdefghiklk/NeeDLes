@@ -12,6 +12,7 @@ if __name__ == '__main__':
     bug_contents_path = config.get('input_output_paths','bug_contents_path')
     file_oracle_path = config.get('input_output_paths','file_oracle_path')
     method_oracle_path = config.get('input_output_paths','method_oracle_path')
+    model_dir_path = config.get('input_output_paths','model_dir_path')
     evaluation_path = config.get('input_output_paths','evaluation_path')
 
     issue_field = 'description'

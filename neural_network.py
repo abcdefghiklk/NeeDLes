@@ -13,6 +13,32 @@ from keras.optimizers import *
 import numpy as np
 import math
 
+def save_model_structure(model, model_structure_path):
+    json_string = model.to_json()
+    data_out = codecs.open(model_structure_path,'w')
+    data_out.write(json_string)
+    data_out.close()
+
+def save_model_weights(model, model_weights_path):
+    model.save_weights(one_epoch_weight_path)
+
+def load_model_structure(model_structure_path):
+    data_in = codecs.open(model_structure_path)
+    json_string = data_in.read()
+    model = model_from_json(json_string)
+    data_in.close()
+    return save_model_weights
+
+def load_model_weights(model, model_weights_path):
+    model.load_weights(model_weights_path)
+    return model
+
+def load_model(model_sturcture_path, model_weights_path):
+    model = load_model_structure(model_structure_path)
+    load_model_weights(model, model_weights_path)
+    return model
+
+
 '''
 A simple cnn siamese model
 The network structure is

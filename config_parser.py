@@ -23,9 +23,8 @@ def parse_config(config_file_path):
     bug_contents_path = file_paths_config['bug_contents_path']
     file_oracle_path = file_paths_config['file_oracle_path']
     method_oracle_path = file_paths_config['method_oracle_path']
+    model_dir_path = file_paths_config['model_dir_path']
     evaluation_path = file_paths_config['evaluation_path']
-
-
 
     oracle_generator_config = config['oracle_generator']
     issue_field = 'description'

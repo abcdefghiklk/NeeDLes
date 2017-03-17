@@ -1,6 +1,5 @@
 import configparser
-
-if __name__ == '__main__':
+def config_write(config_file_path):
     config = configparser.ConfigParser()
     config['input_output_paths']={}
     file_paths_config = config['input_output_paths']
@@ -12,6 +11,7 @@ if __name__ == '__main__':
     file_paths_config['file_oracle_path'] = "C:/Users/dell/Dropbox/NeeDLes/data/Hyloc_data/Tomcat_oracle"
     file_paths_config['code_mappings_path'] = "C:/Users/dell/Dropbox/NeeDLes/data/Hyloc_data/tomcat_mappings_code.txt"
     file_paths_config['method_oracle_path'] = "C:/Users/dell/Dropbox/NeeDLes/data/Hyloc_data/tomcat_relevant_methods.txt"
+    file_paths_config['model_dir_path'] = "C:/Users/dell/Dropbox/NeeDLes/data/Hyloc_data/model_tomcat"
     file_paths_config['evaluation_path'] = "C:/Users/dell/Dropbox/NeeDLes/data/Hyloc_data/evaluation"
 
     config['oracle_generator'] = {}
@@ -53,14 +53,8 @@ if __name__ == '__main__':
     evaluation_options_config = config['evaluation_options']
     evaluation_options_config['k_value'] = '10'
     evaluation_options_config['rel_threshold'] = '0.65'
-    #config['DEFAULT'] = {'ServerAliveInterval': '45','Compression': 'yes','CompressionLevel': '9'}
-    #config['bitbucket.org'] = {}
-    #config['bitbucket.org']['User'] = 'hg'
-    #config['topsecret.server.com'] = {}
-    #topsecret = config['topsecret.server.com']
-    #topsecret['Port'] = '50022'
-    #topsecret['ForwardX11'] = 'no'
-    #config['DEFAULT']['ForwardX11'] = 'yes'
-    with open('NeeDLes.ini', 'w') as configfile:
+    with open(config_file_path, 'w') as configfile:
         config.write(configfile)
+if __name__ == '__main__':
+
 

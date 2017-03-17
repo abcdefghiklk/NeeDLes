@@ -25,8 +25,9 @@ def parseArgs():
     parser.add_argument('-b', action = 'store', dest = 'bug_contents_path', help='The path containing all bug contents.')
     parser.add_argument('-c', action = 'store', dest = 'code_contents_path', help='The path containing the code contents.')
     parser.add_argument('-f', action = 'store', dest = 'file_oracle_path', help = 'The path containing the code contents.')
-    parser.add_argument('-m', action = 'store', dest = 'method_oracle_path', help = 'The path containing the the relevance pairs between bug index and method contents.')
-    parser.add_argument('-e', action = 'store', dest = 'evaluation_path', help = 'The path containing the the relevance pairs between bug index and code index.')
+    parser.add_argument('-m', action = 'store', dest = 'method_oracle_path', help = 'The path containing the relevance pairs between bug index and method contents.')
+    parser.add_argument('-d', action = 'store', dest = 'model_dir_path', help = 'The diectory path saving model structure and weights for each training epoch.')
+    parser.add_argument('-e', action = 'store', dest = 'evaluation_path', help = 'The path containing the relevance pairs between bug index and code index.')
 
 
     #optional arguments:
