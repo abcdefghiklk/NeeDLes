@@ -12,10 +12,24 @@ from keras.layers.pooling import MaxPooling1D,MaxPooling2D,MaxPooling3D
 from keras.utils.np_utils import to_categorical
 from file_utils import *
 from neural_network import *
+from random import randint
 import numpy as np
 import math
 import codecs
 import argparse
+
+def batch_gen(X):
+    #n_batches = X.shape[0]/float(batch_size)
+    #n_batches = int(maths.ceil(n_batches))
+    #end = int(X.shape[0]/float(batch_size) * batch_size)
+    #n = 0
+    for i in range(0,len(X)):
+        batch_x = [X[i],X[i]]
+        batch_y = [X[i],X[i],X[i]]
+        batch_label = 0
+        yield batch_x, batch_y, batch_label
+
+
 
 def test_siamese_cnn_simple():
     data_1 = np.random.random((100,1,10,1))
@@ -113,6 +127,12 @@ def test_siamese_lstm():
             matched = matched+1
 
     print(matched)
+def foo():
+    a=[1,2]
+    b=[3,4]
+    c=[5,6]
+    d=[7,8]
+    return([a,b],[c,d])
 def test_pad_sequences():
     bug_file_path = 'C:/Users/dell/Dropbox/NeeDLes/data/Hyloc_data/Tomcat_bug_content'
     code_file_path = 'C:/Users/dell/Dropbox/NeeDLes/data/Hyloc_data/Tomcat_code_content'
@@ -153,18 +173,33 @@ def test_pad_sequences():
     #code_seq = transform_to_one_hot(code_seq, 50)
     #print(bug_seq)
 if __name__ == '__main__':
-    #test_siamese_lstm()
-    #test_pad_sequences()
-    a=[[[1,2],2,3,4],[],[2,3,4]]
-    b = reverse_seq(a)
-    print(b)
-    #a=[[1,2,3],[3,4,5,4]]
-    #b=[[5,7,7,8,1],[2,9,9],[4,4]]
-    #new_sequences = pad_sequences(a+b,padding = 'post')
-   #a_seq = new_sequences[0:len(a)]
+  # a = np.random.random((10000,200,200))
 
-    #a_seq = transform_to_one_hot(a_seq, 10)
-    #print(a_seq)
+    method_path = "C:/Users/dell/Dropbox/NeeDLes/data/Hyloc_data/tomcat_relevant_methods.txt"
+    code_path = "C:/Users/dell/Dropbox/NeeDLes/data/Hyloc_data/Tomcat_code_content"
+    oracle_path = "C:/Users/dell/Dropbox/NeeDLes/data/Hyloc_data/Tomcat_oracle"
+    bug_path = "C:/Users/dell/Dropbox/NeeDLes/data/Hyloc_data/Tomcat_bug_content"
+
+    code_contents = load_contents(code_path)
+    tokenizer = text.Tokenizer(nb_words = 20)
+    tokenizer.fit_on_texts(code_contents)
+
+    neg_method_list = get_top_methods_in_file(code_contents[0], 20, 5, tokenizer)
+    print(neg_method_list)
+    for one_method in neg_method_list:
+        #print(one_method)
+        convert_to_lstm_input_form(one_method, tokenizer,20, 20)
+#    oracle_list = read_oracle(oracle_path)
+#    rel_methods = load_relevant_methods(method_path)
+#    tokenizer = text.Tokenizer(nb_words = 20)
+ #   tokenizer.fit_on_texts(rel_methods)
+ #   output_seq = convert_to_lstm_input_form(rel_methods[0], tokenizer, 20, 10)
+ #   print(output_seq)
+
+#    X=[1,2,3,4,5,6]
+#    for x,y,l in batch_gen(X):
+#        print(x,y,l)
+
 
 
 

@@ -20,117 +20,46 @@ import argparse
 from argument_parser import *
 
 
+def main_siamese_lstm(bug_contents_path, code_contents_path, file_oracle_path, method_oracle_path, evaluation_file_path, vocabulary_size, lstm_core_length, lstm_seq_length = 200, neg_method_num = 10, split_ratio = 0.8, activation_function = 'tanh', inner_activation_function = 'hard_sigmoid', distance_function = 'cos', initializer = 'glorot_uniform', inner_initializer = 'orthogonal', regularizer = None, optimizer = RMSprop(lr=0.001, rho = 0.9, epsilon=1e-8, decay=0.0), dropout = 0.0, epoch_num = 100, k_value = 10, rel_threshold = 0.65):
 
-def main_siamese_simple_cnn(bug_file_path,code_file_path,oracle_file_path,vocabulary_size):
-    #vocabulary_size=20
-
-    #loading data from file
-    print("loading data from file:")
-    [bug_contents,code_contents,oracle] = load_data(bug_file_path, code_file_path, oracle_file_path)
-    print("finished loading data from file.")
-
-    #converting data to suit simple cnn input
-    #reshape the input to suit dimension requirement for keras
-    print("converting to simple cnn input:")
-    [bug_seq,code_seq,method_num_list] = convert_to_input(bug_contents, code_contents,vocabulary_size,network_type="simple_cnn")
-    print("finished converting to simple cnn input.")
-
-    #splitting training and test samples
-    print("splitting training and test samples:")
-    [training_data, test_data] = split_samples(bug_seq, code_seq, oracle)
-    print("finished splitting training and test samples")
-
-    #building simple cnn siamese network
-    print("building simple cnn siamese network:")
-    training_bug_seq = training_data[0]
-    training_code_seq = training_data[1]
-    input_length = len(training_bug_seq[0][0])
-    model = simple_cnn_siamese(input_length,10,5,3,2)
-    print("finished building simple cnn siamese network.")
-
-    #training the model with the training data
-    print("training simple cnn siamese network:")
-
-    model.fit([training_bug_seq,training_code_seq],training_data[2],nb_epoch=10,batch_size=32)
-    print("finished training simple cnn siamese network.")
-
-    #predicting on the test data
-    print("computing predictions on the test data:")
-    predictions = []
-    for one_bug_seq in test_data[0]:
-        one_bug_prediction = []
-        for one_code_seq in code_seq:
-            one_bug_prediction.append(model.predict([one_bug_seq,one_code_seq]))
-        predictions.append(one_bug_prediction)
-    print("finished computing predictions on the test data.")
-
-    #evaluating on the test data
-    print("evaluating performance on the test data:")
-    evaluations = evaluate(predictions, test_data[1], 10)
-    print(evaluations)
-    print("finished evaluating performance on the test data.")
-    return(evaluations)
-
-def main_siamese_lstm(bug_file_path, code_file_path, oracle_file_path, evaluation_file_path, vocabulary_size, lstm_core_length, activation_function = 'tanh', inner_activation_function = 'hard_sigmoid', distance_function = 'cos', initializer = 'glorot_uniform', inner_initializer = 'orthogonal', regularizer = None, optimizer = RMSprop(lr=0.001, rho = 0.9, epsilon=1e-8, decay=0.0), dropout = 0.0, epoch_num = 100, nb_batch_size = 10, k_value = 10, rel_threshold = 0.65, split_ratio = 0.8, max_lstm_length = 200):
+    #method_oracle_path = "C:/Users/dell/Dropbox/NeeDLes/data/Hyloc_data/tomcat_relevant_methods.txt"
 
     #loading data from file
     print("loading data from file:")
-    [bug_contents,code_contents,oracle] = load_data(bug_file_path, code_file_path, oracle_file_path)
+    [bug_contents,code_contents,file_oracle, method_oracle] = load_data(bug_contents_path, code_contents_path, file_oracle_path, method_oracle_path)
     print("finished loading data from file.")
 
-    #converting data to suit lstm input
-    #1. transform each element to one-hot representation
-    #e.g. [1,3]-->[[0,1,0,0],[0,0,0,1]] for vocabulary_size = 4
-    #2. zero padding to guarantee each input sample has the same length
-    #e.g. [[[0,0,1],[0,1,0]],[[0,1,0],[1,0,0],[0,0,1]]]-->
-    #     [[[0,0,1],[0,1,0],[0,0,0]],[[0,1,0],[1,0,0],[0,0,1]]]
-    print("converting to lstm input:")
-    [bug_seq,code_seq,method_index_list] = convert_to_input(bug_contents, code_contents,vocabulary_size, max_lstm_length = max_lstm_length, network_type="lstm")
-    print("finished converting to lstm input.")
+    print("initializing tokenizer:")
+    tokenizer = get_tokenizer(bug_contents, code_contents, vocabulary_size)
+    print("finished initializing tokenizer.")
+
+    nb_train_bug = int(math.floor(len(bug_contents)* split_ratio))
 
 
-    #splitting training and test samples
-    print("splitting training and test samples:")
-    [training_data, test_data] = split_samples(bug_seq, code_seq, method_index_list, oracle, ratio= split_ratio)
-    print("finished splitting training and test samples.")
-
-    #building the lstm siamese network
     print("building lstm siamese network:")
-    training_bug_seq = training_data[0]
-    training_code_seq = training_data[1]
-    input_length = len(training_bug_seq[0])
-    input_dim = vocabulary_size
-
-    model = siamese_lstm(input_length, input_dim, lstm_core_length, activation_function = activation_function, inner_activation_function = inner_activation_function, distance_function = distance_function, initializer = initializer, inner_initializer = inner_initializer, regularizer = regularizer, optimizer = optimizer, dropout = dropout)
+    model = siamese_lstm(lstm_seq_length, vocabulary_size, lstm_core_length, activation_function = activation_function, inner_activation_function = inner_activation_function, distance_function = distance_function, initializer = initializer, inner_initializer = inner_initializer, regularizer = regularizer, optimizer = optimizer, dropout = dropout)
     print("finished building lstm siamese network.")
 
-    #training the model with the training data
+
     print("training lstm siamese network:")
-    model.fit([training_bug_seq,reverse_seq(training_bug_seq),training_code_seq,reverse_seq(training_code_seq)],training_data[2], nb_epoch = epoch_num,batch_size = nb_batch_size)
+    for epoch in range(epoch_num):
+        print("training epoch {}:".format(epoch))
+        batch_index = 1
+        for bug_batch, code_batch, label_batch in batch_gen(bug_contents, code_contents, file_oracle, method_oracle, tokenizer, vocabulary_size, lstm_seq_length, nb_train_bug, neg_method_num):
+            print("training batch {}, size {}".format(batch_index, len(bug_batch)))
+            batch_index = batch_index + 1
+            model.train_on_batch([bug_batch, reverse_seq(bug_batch), code_batch, reverse_seq(code_batch)], label_batch)
     print("finished training lstm siamese network.")
 
     #predicting on the test data
     print("computing predictions on the test data:")
-    predictions = []
-    for one_bug_seq in test_data[0]:
-        one_bug_prediction = []
-        #traverse each code file
-        for i in range(0,len(method_index_list)-1):
-            #obtain the prediction score for each method
-            scores = []
-            for one_code_index in range(method_index_list[i], method_index_list[i+1]):
-                one_code_seq = np.asarray(code_seq[one_code_index])
-                scores.append(model.predict([one_bug_seq,reverse_seq(one_bug_seq),one_code_seq,reverse_seq(one_code_seq)], batch_size = 1))
+    test_oracle, predictions = generate_predictions(model, bug_contents, code_contents, file_oracle, method_oracle, nb_train_bug, tokenizer, lstm_seq_length, vocabulary_size, neg_method_num)
 
-            #Here we can define different strategies from the method scores to the file score, here we only consider the average as a start
-            one_bug_prediction.append(np.mean(scores))
-
-        predictions.append(one_bug_prediction)
     print("finished computing predictions on the test data.")
 
     #evaluating on the test data
     print("evaluating performance on the test data:")
-    evaluations = evaluate(predictions, test_data[1], k_value, rel_threshold)
+    evaluations = evaluate(predictions, test_oracle, k_value, rel_threshold)
     print(evaluations)
     print("finished evaluating performance on the test data.")
 
@@ -139,11 +68,37 @@ def main_siamese_lstm(bug_file_path, code_file_path, oracle_file_path, evaluatio
     export_evaluation(evaluations, evaluation_file_path)
     print("finished writing evalution performance to file.")
 
+def generate_predictions(model, bug_contents, code_contents, file_oracle, method_oracle, nb_train_bug, tokenizer, lstm_seq_length, vocabulary_size, neg_method_num):
+    predictions = []
+    test_oracle = []
+    for bug_index in range(nb_train_bug, len(bug_contents)):
+        test_oracle.append(file_oracle[bug_index][0])
+        one_bug_prediction = []
+        one_hot_bug_seq = convert_to_lstm_input_form(bug_contents[bug_index], tokenizer,lstm_seq_length, vocabulary_size)
+        one_hot_bug_seq = np.asarray([one_hot_bug_seq])
+
+        #traverse each code file
+        for one_code_content in code_contents:
+            #obtain the prediction score for each method
+            scores = []
+            method_list = get_top_methods_in_file(one_code_content, lstm_seq_length, neg_method_num)
+            for one_method in method_list:
+                one_hot_code_seq = convert_to_lstm_input_form(one_method, tokenizer,lstm_seq_length, vocabulary_size)
+                one_hot_code_seq = np.asarray([one_hot_code_seq])
+                prediction_result = model.predict([one_hot_bug_seq, reverse_seq(one_hot_bug_seq), one_hot_code_seq, reverse_seq(one_hot_code_seq)]);
+
+
+            #Here we can define different strategies from the method scores to the file score, here we only consider the average as a start
+            one_bug_prediction.append(np.mean(scores))
+
+        predictions.append(one_bug_prediction)
+    return test_oracle, predictions
+
 
 def main():
     args = parseArgs();
-    optimizer = load_optimizer(args)
-    main_siamese_lstm(args.bug_file_path, args.code_file_path, args.oracle_file_path, args.evaluation_path, args.vocabulary_size, args.lstm_core_length, max_lstm_length = args.max_lstm_length, activation_function = args.activation_function, inner_activation_function = args.inner_activation_function, distance_function = args.distance_function, initializer = args.initializer, inner_initializer = args.inner_initializer, regularizer = args.regularizer, optimizer = optimizer, dropout = args.dropout, epoch_num = args.epoch_num, nb_batch_size = args.batch_size, k_value = args.k_value, rel_threshold = args.rel_threshold, split_ratio = args.split_ratio)
+    optimizer = parse_optimizer(args)
+    main_siamese_lstm(args.bug_contents_path, args.code_contents_path, args.file_oracle_path, args.method_oracle_path, args.evaluation_path, args.vocabulary_size, args.lstm_core_length, lstm_seq_length = args.lstm_seq_length, neg_method_num = args.neg_method_num, split_ratio = args.split_ratio, activation_function = args.activation_function, inner_activation_function = args.inner_activation_function, distance_function = args.distance_function, initializer = args.initializer, inner_initializer = args.inner_initializer, regularizer = args.regularizer, optimizer = optimizer, dropout = args.dropout, epoch_num = args.epoch_num, k_value = args.k_value, rel_threshold = args.rel_threshold)
 if __name__ == '__main__':
     start = time.clock()
     main()

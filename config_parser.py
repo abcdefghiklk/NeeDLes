@@ -1,23 +1,33 @@
 import configparser
 import os
+import argparse
 from main import main_siamese_lstm
+def parseArgs():
 
-if __name__ == '__main__':
+    #required arguments:
+    parser = argparse.ArgumentParser(description='running the lstm siamese network from configuration file')
+    parser.add_argument('-config', action = 'store', dest = 'config_file_path', help = 'The configuration file path.')
+    args = parser.parse_args()
+    return(args)
+
+def parse_config(config_file_path):
     config = configparser.ConfigParser()
-    config.read('NeeDLes.ini')
+    config.read(config_file_path)
     file_paths_config = config['input_output_paths']
 
     its_file_path = file_paths_config['its_file_path']
     project_dir_path = file_paths_config['project_dir_path']
     code_index_path = file_paths_config['code_index_path']
-    code_content_path = file_paths_config['code_content_path']
-    bug_content_path = file_paths_config['bug_content_path']
-    oracle_path = file_paths_config['oracle_path']
+
+    code_contents_path = file_paths_config['code_contents_path']
+    bug_contents_path = file_paths_config['bug_contents_path']
+    file_oracle_path = file_paths_config['file_oracle_path']
+    method_oracle_path = file_paths_config['method_oracle_path']
     evaluation_path = file_paths_config['evaluation_path']
 
+
+
     oracle_generator_config = config['oracle_generator']
-
-
     issue_field = 'description'
     if 'issue_field' in oracle_generator_config:
         issue_field = oracle_generator_config['issue_field']
@@ -43,7 +53,7 @@ if __name__ == '__main__':
         neg_sample_number = oracle_generator_config['neg_sample_number']
 
 
-    run_python_str = 'python main.py -b {} -c {} -o {} -e {}'.format(bug_content_path, code_content_path, oracle_path, evaluation_path)
+    run_python_str = 'python main.py -b {} -c {} -f {} -m {} -e {}'.format(bug_contents_path, code_contents_path, file_oracle_path, method_oracle_path, evaluation_path)
 
 
     oracle_reader_config = config['oracle_reader']
@@ -51,13 +61,17 @@ if __name__ == '__main__':
         vocabulary_size = int(oracle_reader_config['vocabulary_size'])
         run_python_str = run_python_str + ' --v {}'.format(vocabulary_size)
 
+    if 'lstm_seq_length' in oracle_reader_config:
+        lstm_seq_length = int(oracle_reader_config['lstm_seq_length'])
+        run_python_str = run_python_str + ' --s {}'.format(lstm_seq_length)
+
+    if 'neg_method_num' in oracle_reader_config:
+        neg_method_num = int(oracle_reader_config['neg_method_num'])
+        run_python_str = run_python_str + ' --n {}'.format(neg_method_num)
+
     if 'split_ratio' in oracle_reader_config:
         split_ratio = float(oracle_reader_config['split_ratio'])
         run_python_str = run_python_str + ' --sr {}'.format(split_ratio)
-
-    if 'max_lstm_length' in oracle_reader_config:
-        max_lstm_length = int(oracle_reader_config['max_lstm_length'])
-        run_python_str = run_python_str + ' --m {}'.format(max_lstm_length)
 
     network_structure_config = config['network_structure']
     if 'lstm_core_length' in network_structure_config:
@@ -117,10 +131,6 @@ if __name__ == '__main__':
         nb_epoch = int(training_options_config['nb_epoch'])
         run_python_str = run_python_str + ' --en {}'.format(nb_epoch)
 
-    if 'batch_size' in training_options_config:
-        batch_size = int(training_options_config['batch_size'])
-        run_python_str = run_python_str + ' --bs {}'.format(batch_size)
-
     evaluation_options_config = config['evaluation_options']
     if 'k_value' in evaluation_options_config:
         k_value = int(evaluation_options_config['k_value'])
@@ -129,12 +139,18 @@ if __name__ == '__main__':
     if 'rel_threshold' in evaluation_options_config:
         rel_threshold = float(evaluation_options_config['rel_threshold'])
         run_python_str = run_python_str + ' --th {}'.format(rel_threshold)
+        print(run_python_str)
+        os.system(run_python_str)
+if __name__ == '__main__':
+    args = parseArgs()
+    parse_config(args.config_file_path)
+    #parse_config('NeeDLes.ini')
+
 
    # run_jar_str ='java -jar C:/Users/dell/Dropbox/NeeDLes/data/Hyloc_data/OracleGenerator.jar -i {} -d {} -x {} -c {} -b {} -o {}'.format(its_file_path,project_dir_path,code_index_path,code_content_path,bug_content_path,oracle_path)
    # os.system(run_jar_str)
 
-    print(run_python_str)
-    os.system(run_python_str)
+
 
 
 

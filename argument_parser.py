@@ -22,17 +22,23 @@ def parseArgs():
 
     #required arguments:
     parser = argparse.ArgumentParser(description='running the lstm siamese network')
-    parser.add_argument('-b', action = 'store', dest = 'bug_file_path', help='The path containing all bug contents.')
-    parser.add_argument('-c', action = 'store', dest = 'code_file_path', help='The path containing the code contents.')
-    parser.add_argument('-o', action = 'store', dest = 'oracle_file_path', help = 'The path containing the code contents.')
+    parser.add_argument('-b', action = 'store', dest = 'bug_contents_path', help='The path containing all bug contents.')
+    parser.add_argument('-c', action = 'store', dest = 'code_contents_path', help='The path containing the code contents.')
+    parser.add_argument('-f', action = 'store', dest = 'file_oracle_path', help = 'The path containing the code contents.')
+    parser.add_argument('-m', action = 'store', dest = 'method_oracle_path', help = 'The path containing the the relevance pairs between bug index and method contents.')
     parser.add_argument('-e', action = 'store', dest = 'evaluation_path', help = 'The path containing the the relevance pairs between bug index and code index.')
+
 
     #optional arguments:
     parser.add_argument('--v', action = 'store', type = int, dest = 'vocabulary_size', help = 'The vocabulary size used for one-hot representation of each word.', default = 300)
 
     parser.add_argument('--l', action = 'store', type = int, dest = 'lstm_core_length', help = 'The lstm unit length.', default = 20)
 
-    parser.add_argument('--m', action = 'store', type = int, dest = 'max_lstm_length', help = 'The maximum value of lstm sequence length.', default = 200)
+    parser.add_argument('--s', action = 'store', type = int, dest = 'lstm_seq_length', help = 'The length of input lstm sequence.', default = 200)
+
+    parser.add_argument('--n', action = 'store', type = int, dest = 'neg_method_num', help = 'The number of longest methods to represent the code file.', default = 10)
+
+    parser.add_argument('--sr', action = 'store', type = float, dest = 'split_ratio', help = 'The ratio of all samples used as training data.', default = 0.8)
 
     parser.add_argument('--af', action = 'store', dest = 'activation_function', help = 'The activation function for lstm output.', default = 'tanh')
 
@@ -60,18 +66,14 @@ def parseArgs():
 
     parser.add_argument('--en', action = 'store', type = int, dest = 'epoch_num', help = 'The number of training epochs.', default = 100)
 
-    parser.add_argument('--bs', action = 'store', type = int, dest = 'batch_size', help = 'The batch size for each training epoch.', default = 10)
-
     parser.add_argument('--k', action = 'store', type = int, dest = 'k_value', help = 'The value of k in the top-k measure.', default = 10)
 
     parser.add_argument('--th', action = 'store', type = float, dest = 'rel_threshold', help = 'The threshold to judge relevance.', default = 0.5)
 
-    parser.add_argument('--sr', action = 'store', type = float, dest = 'split_ratio', help = 'The ratio of all samples used as training data.', default = 0.8)
-
     args = parser.parse_args()
     return(args)
 
-def load_optimizer(args):
+def parse_optimizer(args):
     if args.optimizer == 'sgd':
         lr = 0.01
         decay = 1e-6

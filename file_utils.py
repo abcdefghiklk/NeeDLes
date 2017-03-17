@@ -6,12 +6,13 @@ import argparse
 import time
 import re
 
-def load_data(bug_content_path, code_content_path, oracle_path):
-    code_contents=load_contents(code_content_path)
-    bug_contents=load_contents(bug_content_path)
-    oracle = read_oracle(oracle_path)
+def load_data(bug_content_path, code_content_path, file_oracle_path, method_oracle_path):
+    code_contents = load_contents(code_content_path)
+    bug_contents = load_contents(bug_content_path)
+    method_oracle = load_relevant_methods(method_oracle_path)
+    file_oracle = read_oracle(file_oracle_path)
 
-    return(bug_contents,code_contents,oracle)
+    return(bug_contents,code_contents, file_oracle, method_oracle)
 
 
 def load_contents(file_path):
@@ -22,6 +23,15 @@ def load_contents(file_path):
     for line in lines:
         if(len(line)>1):
             content_list.append(line)
+    return content_list
+
+def load_relevant_methods(file_path):
+    data_input = codecs.open(file_path)
+    lines = data_input.readlines()
+    data_input.close()
+    content_list = []
+    for line in lines:
+        content_list.append(line)
     return content_list
 
 def read_oracle(oracle_file_path):
