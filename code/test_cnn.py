@@ -1,6 +1,6 @@
 from keras.models import Sequential
 from keras.layers import Dense, Activation
-from keras.layers import Merge
+from keras.layers import Merge, Input
 from keras.layers.recurrent import LSTM
 from keras.optimizers import *
 from keras.preprocessing.sequence import *
@@ -118,16 +118,16 @@ def test_siamese_lstm():
 
     #model.add(Merge([left_branch, right_branch], mode = 'cos'))
     #model.compile(optimizer=Adadelta(lr=1.0, rho = 0.95, epsilon=1e-8, decay=0.0), loss='mean_squared_error')
-    model.fit([data_1,reverse_seq(data_1),data_2,reverse_seq(data_2)],labels)
-    result = model.predict([data_1,reverse_seq(data_1),data_2,reverse_seq(data_2)],batch_size=1)
-    matched = 0
-    for i in range(len(result)):
-        if (result[i][0]>0.5) & (labels[i]==1):
-            matched = matched+1
-        elif (result[i][0]<0.5) & (labels[i]==0):
-            matched = matched+1
+    test_1 = np.random.random((3,20,5))
+    test_2 = np.random.random((3,20,5))
+    model.train_on_batch([data_1,reverse_seq(data_1),data_2,reverse_seq(data_2)],labels)
+    result = model.predict([test_1, reverse_seq(test_1), np.asarray(test_2), reverse_seq(test_2)],batch_size=1)
+    print(result)
+    for i in range(3):
+        result = model.predict([np.asarray([data_1[i]]), reverse_seq(np.asarray([data_1[i]])), np.asarray([data_2[i]]), reverse_seq(np.asarray([data_2[i]]))])
+        print(result)
+    #result = model.predict([data_1,reverse_seq(data_1),data_2,reverse_seq(data_2)])
 
-    print(matched)
 def foo():
     a=[1,2]
     b=[3,4]
@@ -174,41 +174,43 @@ def test_pad_sequences():
     #code_seq = transform_to_one_hot(code_seq, 50)
     #print(bug_seq)
 if __name__ == '__main__':
-  # a = np.random.random((10000,200,200))
 
+    #test_siamese_lstm()
     method_path = "C:/Users/dell/Dropbox/NeeDLes/data/Hyloc_data/tomcat_relevant_methods.txt"
-    code_path = "C:/Users/dell/Dropbox/NeeDLes/data/Hyloc_data/Tomcat_code_content"
-    oracle_path = "C:/Users/dell/Dropbox/NeeDLes/data/Hyloc_data/Tomcat_oracle"
-    bug_path = "C:/Users/dell/Dropbox/NeeDLes/data/Hyloc_data/Tomcat_bug_content"
+    code_contents_path = "C:/Users/dell/Dropbox/NeeDLes/data/Hyloc_data/Tomcat_code_content"
+    file_oracle_path = "C:/Users/dell/Dropbox/NeeDLes/data/Hyloc_data/Tomcat_oracle"
+    bug_contents_path = "C:/Users/dell/Dropbox/NeeDLes/data/Hyloc_data/Tomcat_bug_content"
+    method_oracle_path = "C:/Users/dell/Dropbox/NeeDLes/data/Hyloc_data/tomcat_relevant_methods.txt"
 
-    model_dir_path = "model"
-    if not os.path.isdir(model_dir_path):
-        os.mkdir(model_dir_path)
+    [bug_contents,code_contents,file_oracle, method_oracle] = load_data(bug_contents_path, code_contents_path, file_oracle_path, method_oracle_path)
+    lstm_length = 50
+    vocabulary_size = 200
+    lstm_core_length = 4
+    #labels = np.random.randint(2, size=100)
+    tokenizer = get_tokenizer(bug_contents[0:10], code_contents[0:10], vocabulary_size)
+    model = siamese_lstm(lstm_length, vocabulary_size, lstm_core_length, optimizer = 'adam')
 
+    bug_train_batch = []
+    code_train_batch = []
+    rel_train_batch = []
     for i in range(10):
-        file_path = os.path.join(model_dir_path, "epoch_{}".format(i))
-        data_in = codecs.open(file_path,'w')
-        data_in.write("hello!")
-        data_in.close()
-    #code_contents = load_contents(code_path)
-    #tokenizer = text.Tokenizer(nb_words = 20)
-    #tokenizer.fit_on_texts(code_contents)
+        bug_train_batch.append(convert_to_lstm_input_form(bug_contents[i], tokenizer,lstm_length, vocabulary_size))
+        code_train_batch.append(convert_to_lstm_input_form(code_contents[i], tokenizer,lstm_length, vocabulary_size))
+        if i>4:
+            rel_train_batch.append(1)
+        else:
+            rel_train_batch.append(0)
 
-    #neg_method_list = get_top_methods_in_file(code_contents[0], 20, 5, tokenizer)
-    #print(neg_method_list)
-    #for one_method in neg_method_list:
-        #print(one_method)
-    #   convert_to_lstm_input_form(one_method, tokenizer,20, 20)
-#    oracle_list = read_oracle(oracle_path)
-#    rel_methods = load_relevant_methods(method_path)
-#    tokenizer = text.Tokenizer(nb_words = 20)
- #   tokenizer.fit_on_texts(rel_methods)
- #   output_seq = convert_to_lstm_input_form(rel_methods[0], tokenizer, 20, 10)
- #   print(output_seq)
+    bug_train_batch = np.asarray(bug_train_batch)
+    code_train_batch = np.asarray(code_train_batch)
+    rel_train_batch = np.asarray(rel_train_batch)
+    model.fit([bug_train_batch, reverse_seq(bug_train_batch), code_train_batch, reverse_seq(code_train_batch)], rel_train_batch, nb_epoch=150)
+    for i in range(10):
+        predictions = model.predict([np.asarray([bug_train_batch[i]]), reverse_seq(np.asarray([bug_train_batch[i]])), np.asarray([code_train_batch[i]]), reverse_seq(np.asarray([code_train_batch[i]]))])
+        pred_value = predictions[0][0][0]
+        print("{} {}".format(abs(pred_value),rel_train_batch[i]))
 
-#    X=[1,2,3,4,5,6]
-#    for x,y,l in batch_gen(X):
-#        print(x,y,l)
+
 
 
 

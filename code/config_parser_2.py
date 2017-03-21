@@ -1,5 +1,6 @@
 import ConfigParser
 import os
+import argparse
 from main import main_siamese_lstm
 
 def parseArgs():
@@ -12,7 +13,7 @@ def parseArgs():
 
 def parse_config(config_file_path):
     config = ConfigParser.RawConfigParser()
-    config.read('NeeDLes_linux.ini')
+    config.read(confile_file_path)
 
     its_file_path = config.get('input_output_paths','its_file_path')
     project_dir_path = config.get('input_output_paths','project_dir_path')
@@ -51,7 +52,7 @@ def parse_config(config_file_path):
     run_python_str = '/usr/local/python27/bin/python main.py -b {} -c {} -f {} -m {} -d {} -e {}'.format(bug_contents_path, code_contents_path, file_oracle_path, method_oracle_path, model_dir_path, evaluation_path)
 
 
-    if config.has_option('oracle_reader,','vocabulary_size'):
+    if config.has_option('oracle_reader','vocabulary_size'):
         vocabulary_size = config.getint('oracle_reader','vocabulary_size')
         run_python_str = run_python_str + ' --v {}'.format(vocabulary_size)
 
@@ -61,7 +62,7 @@ def parse_config(config_file_path):
 
     if config.has_option('oracle_reader','neg_method_num'):
         neg_method_num = config.getint('oracle_reader','neg_method_num')
-        run_python_str = run_python_str + ' --s {}'.format(neg_method_num)
+        run_python_str = run_python_str + ' --n {}'.format(neg_method_num)
 
     if config.has_option('oracle_reader','split_ratio'):
         split_ratio = config.getfloat('oracle_reader','split_ratio')

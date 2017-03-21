@@ -20,7 +20,7 @@ import argparse
 from argument_parser import *
 
 
-def main_siamese_lstm(bug_contents_path, code_contents_path, file_oracle_path, method_oracle_path, model_dir_path, evaluation_file_path, vocabulary_size, lstm_core_length, lstm_seq_length = 200, neg_method_num = 10, split_ratio = 0.8, activation_function = 'tanh', inner_activation_function = 'hard_sigmoid', distance_function = 'cos', initializer = 'glorot_uniform', inner_initializer = 'orthogonal', regularizer = None, optimizer = RMSprop(lr=0.001, rho = 0.9, epsilon=1e-8, decay=0.0), dropout = 0.0, epoch_num = 100, k_value = 10, rel_threshold = 0.65):
+def main_siamese_lstm(bug_contents_path, code_contents_path, file_oracle_path, method_oracle_path, model_dir_path, evaluation_file_path, vocabulary_size, lstm_core_length, lstm_seq_length = 200, neg_method_num = 10, split_ratio = 0.8, activation_function = 'tanh', inner_activation_function = 'hard_sigmoid', distance_function = 'cos', initializer = 'glorot_uniform', inner_initializer = 'orthogonal', regularizer = None, optimizer = RMSprop(lr=0.001, rho = 0.9, epsilon=1e-8, decay=0.0), dropout = 0.0, epoch_num = 100, k_value = 10, rel_threshold = 0.5):
 
     if not os.path.isdir(model_dir_path):
         os.mkdir(model_dir_path)
@@ -84,20 +84,32 @@ def generate_predictions(model, bug_contents, code_contents, file_oracle, method
     predictions = []
     test_oracle = []
     for bug_index in range(nb_train_bug, len(bug_contents)):
+        print("generating predictions for bug {} :".format(bug_index))
         test_oracle.append(file_oracle[bug_index][0])
         one_bug_prediction = []
         one_hot_bug_seq = convert_to_lstm_input_form(bug_contents[bug_index], tokenizer,lstm_seq_length, vocabulary_size)
+        if len(one_hot_bug_seq) == 0:
+            print("testing bug sequence is void!")
+            continue
         one_hot_bug_seq = np.asarray([one_hot_bug_seq])
 
         #traverse each code file
         for one_code_content in code_contents:
+            print("for one code:")
             #obtain the prediction score for each method
             scores = []
-            method_list = get_top_methods_in_file(one_code_content, lstm_seq_length, neg_method_num)
+            method_list = get_top_methods_in_file(one_code_content, lstm_seq_length, neg_method_num, tokenizer)
             for one_method in method_list:
+                print("for one method:")
+                print(one_method)
                 one_hot_code_seq = convert_to_lstm_input_form(one_method, tokenizer,lstm_seq_length, vocabulary_size)
+                if len(one_hot_code_seq) == 0:
+                    continue
                 one_hot_code_seq = np.asarray([one_hot_code_seq])
                 prediction_result = model.predict([one_hot_bug_seq, reverse_seq(one_hot_bug_seq), one_hot_code_seq, reverse_seq(one_hot_code_seq)]);
+                value = abs(prediction_result[0][0][0])
+                print("prediction_result: {}".format(value))
+                scores.append(value)
 
 
             #Here we can define different strategies from the method scores to the file score, here we only consider the average as a start

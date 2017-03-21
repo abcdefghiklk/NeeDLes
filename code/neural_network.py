@@ -1,7 +1,8 @@
 from keras.models import Sequential
 from keras.layers import Dense, Activation
-from keras.layers import Merge
-from keras.layers import core
+from keras.layers import Merge, Input
+from keras.layers import core, merge
+from keras.models import Model
 from data_utils import *
 from keras.layers.recurrent import LSTM
 from keras.layers.core import *
@@ -12,6 +13,7 @@ from sklearn.metrics import average_precision_score
 from keras.optimizers import *
 import numpy as np
 import math
+import keras.backend as K
 
 def save_model_structure(model, model_structure_path):
     json_string = model.to_json()
@@ -27,13 +29,13 @@ def load_model_structure(model_structure_path):
     json_string = data_in.read()
     model = model_from_json(json_string)
     data_in.close()
-    return save_model_weights
+    return model
 
 def load_model_weights(model, model_weights_path):
     model.load_weights(model_weights_path)
     return model
 
-def load_model(model_sturcture_path, model_weights_path):
+def load_model(model_structure_path, model_weights_path):
     model = load_model_structure(model_structure_path)
     load_model_weights(model, model_weights_path)
     return model
@@ -157,45 +159,56 @@ def siamese_two_layer_cnn(nb_input_row, nb_input_col, nb_filter_left_1,filter_le
     return model
 
 def siamese_lstm(input_length, input_dim, lstm_core_length, activation_function ='tanh', inner_activation_function='hard_sigmoid', distance_function = 'cos', initializer = 'glorot_uniform', inner_initializer = 'orthogonal', regularizer = None, optimizer = Adadelta(lr=1.0, rho = 0.95, epsilon=1e-8, decay=0.0), dropout = 0.0):
-    left_branch_1 = Sequential()
 
-    left_branch_1.add(Masking(mask_value=0,input_shape=(input_length,input_dim)))
+    input_left_1 = Input(shape = (input_length, input_dim))
+    input_left_2 = Input(shape = (input_length, input_dim))
+    input_right_1 = Input(shape = (input_length, input_dim))
+    input_right_2 = Input(shape = (input_length, input_dim))
 
-    left_branch_1.add(LSTM(output_dim = lstm_core_length,input_shape=(input_length,input_dim), init = initializer, inner_init = inner_initializer, activation = activation_function, inner_activation = inner_activation_function, W_regularizer = regularizer, U_regularizer = regularizer, b_regularizer= regularizer, dropout_W = dropout, dropout_U=dropout))
+    masking_left_1 = Masking(mask_value=0)(input_left_1)
+    lstm_left_1 = LSTM(output_dim = lstm_core_length, init = initializer, inner_init = inner_initializer, activation = activation_function, inner_activation = inner_activation_function, W_regularizer = regularizer, U_regularizer = regularizer, b_regularizer= regularizer, dropout_W = dropout, dropout_U=dropout)(masking_left_1)
 
-    left_branch_2 = Sequential()
-    left_branch_2.add(Masking(mask_value=0,input_shape=(input_length,input_dim)))
-    left_branch_2.add(LSTM(output_dim = lstm_core_length,input_shape=(input_length,input_dim), init = initializer, inner_init = inner_initializer, activation = activation_function, inner_activation = inner_activation_function, W_regularizer = regularizer, U_regularizer = regularizer, b_regularizer= regularizer, dropout_W = dropout, dropout_U=dropout))
+    masking_left_2 = Masking(mask_value=0)(input_left_2)
+    lstm_left_2 = LSTM(output_dim = lstm_core_length, init = initializer, inner_init = inner_initializer, activation = activation_function, inner_activation = inner_activation_function, W_regularizer = regularizer, U_regularizer = regularizer, b_regularizer= regularizer, dropout_W = dropout, dropout_U=dropout)(masking_left_2)
 
-    left_branch = Sequential()
-    left_branch.add(Merge([left_branch_1,left_branch_2], mode='concat', concat_axis=-1, dot_axes=-1))
+    left_branch_merge = merge([lstm_left_1,lstm_left_2], mode='concat')
+
+    masking_right_1 = Masking(mask_value=0)(input_right_1)
+    lstm_right_1 = LSTM(output_dim = lstm_core_length, init = initializer, inner_init = inner_initializer, activation = activation_function, inner_activation = inner_activation_function, W_regularizer = regularizer, U_regularizer = regularizer, b_regularizer= regularizer, dropout_W = dropout, dropout_U=dropout)(masking_right_1)
+
+
+    masking_right_2 = Masking(mask_value=0)(input_right_2)
+    lstm_right_2 = LSTM(output_dim = lstm_core_length, init = initializer, inner_init = inner_initializer, activation = activation_function, inner_activation = inner_activation_function, W_regularizer = regularizer, U_regularizer = regularizer, b_regularizer= regularizer, dropout_W = dropout, dropout_U=dropout)(masking_right_2)
+
+
+    right_branch_merge = merge([lstm_right_1,lstm_right_2], mode='concat')
+
     # 'sum', 'mul', 'concat', 'ave', 'cos', 'dot', 'max'.
 
-    right_branch_1 = Sequential()
-    right_branch_1.add(Masking(mask_value=0,input_shape=(input_length,input_dim)))
-    right_branch_1.add(LSTM(output_dim = lstm_core_length,input_shape=(input_length,input_dim), init = initializer, inner_init = inner_initializer, activation = activation_function, inner_activation = inner_activation_function, W_regularizer = regularizer, U_regularizer = regularizer, b_regularizer= regularizer, dropout_W = dropout, dropout_U=dropout))
+    output = merge([left_branch_merge, right_branch_merge], mode = distance_function)
 
-
-    right_branch_2 = Sequential()
-    right_branch_2.add(Masking(mask_value=0,input_shape=(input_length,input_dim)))
-    right_branch_2.add(LSTM(output_dim = lstm_core_length, input_shape=(input_length,input_dim),return_sequences=False, init = initializer, inner_init = inner_initializer, activation = activation_function, inner_activation = inner_activation_function, W_regularizer = regularizer, U_regularizer = regularizer, b_regularizer= regularizer, dropout_W = dropout, dropout_U=dropout))
-
-    right_branch = Sequential()
-    right_branch.add(Merge([right_branch_1,right_branch_2], mode = 'concat'))
-
-
-    model = Sequential()
-    model.add(Merge([left_branch,right_branch], mode = distance_function))
+    model = Model([input_left_1, input_left_2, input_right_1, input_right_2], output)
 
     #model.add(core.Flatten())
     #model.add(Dense(2,init='glorot_uniform', activation="sigmoid", weights=None, W_regularizer=None, b_regularizer=None, activity_regularizer=None, W_constraint=None, b_constraint=None, bias=True))
-    model.compile(optimizer = optimizer, loss = 'mean_squared_error')
+    model.compile(optimizer = optimizer, loss = squared_absolute_loss)
 
     return model
 
+def squared_absolute_loss(y_true, y_pred):
+    return K.mean(K.square(K.abs(y_pred) - y_true))
 
-#lasagne
-#adam no learning rate required
-#ada-delta 0.8-->adjustment
-#initialization: random/guassion
-#regularization:
+def contrastive_loss(y_true, y_pred):
+    margin = 1
+    return K.mean( (1-y_true) * K.square(y_pred) + (y_true) * K.square(K.maximum(margin - y_pred, 0)))
+
+def edis(x):
+    s = x[0] - x[1]
+    output = (s ** 2).sum(axis=1)
+    output = K.reshape(output, (output.shape[0],1))
+    return output
+
+def euc_dist_shape(input_shape):
+    shape = list(input_shape)
+    outshape = (shape[0][0],1)
+    return tuple(outshape)
