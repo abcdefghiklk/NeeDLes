@@ -11,7 +11,7 @@ from keras.optimizers import *
 from sklearn.model_selection import KFold
 from keras.models import Sequential
 from data_utils import *
-from neural_network import simple_cnn_siamese,siamese_lstm
+from neural_network import siamese_lstm
 from keras.utils.np_utils import to_categorical
 from sklearn.metrics import average_precision_score
 from evaluation import *
@@ -52,6 +52,8 @@ def parseArgs():
     parser.add_argument('--ii', action = 'store', dest = 'inner_initializer', help = 'The initialization function for lstm inner elements.', default = 'orthogonal')
 
     parser.add_argument('--r', action = 'store', dest = 'regularizer', help = 'The weight regularization function.', default = None)
+
+    parser.add_argument('--em', action = 'store', type = int, dest = 'embedding_dimension', help = 'The embedding dimension.', default = -1)
 
     parser.add_argument('--op', action = 'store', dest = 'optimizer', help = 'The training strategy for the whole model.', default = 'rmsprop')
 

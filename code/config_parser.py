@@ -72,6 +72,9 @@ def parse_config(config_file_path):
         split_ratio = float(oracle_reader_config['split_ratio'])
         run_python_str = run_python_str + ' --sr {}'.format(split_ratio)
 
+    if 'embedding_dimension' in oracle_reader_config:
+        embedding_dimension = int(oracle_reader_config['embedding_dimension'])
+        run_python_str = run_python_str + ' --em {}'.format(embedding_dimension)
     network_structure_config = config['network_structure']
     if 'lstm_core_length' in network_structure_config:
         lstm_core_length = int(network_structure_config['lstm_core_length'])
@@ -143,7 +146,7 @@ def parse_config(config_file_path):
 if __name__ == '__main__':
     args = parseArgs()
     parse_config(args.config_file_path)
-    #parse_config('NeeDLes.ini')
+    #parse_config('../config/NeeDLes_tomcat.ini')
 
 
    # run_jar_str ='java -jar C:/Users/dell/Dropbox/NeeDLes/data/Hyloc_data/OracleGenerator.jar -i {} -d {} -x {} -c {} -b {} -o {}'.format(its_file_path,project_dir_path,code_index_path,code_content_path,bug_content_path,oracle_path)

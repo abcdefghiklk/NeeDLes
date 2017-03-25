@@ -11,7 +11,7 @@ from keras.optimizers import *
 from sklearn.model_selection import KFold
 from keras.models import Sequential
 from data_utils import *
-from neural_network import simple_cnn_siamese,siamese_lstm
+from neural_network import siamese_lstm
 from keras.utils.np_utils import to_categorical
 from sklearn.metrics import average_precision_score
 from evaluation import *
@@ -20,7 +20,7 @@ import argparse
 from argument_parser import *
 
 
-def main_siamese_lstm(bug_contents_path, code_contents_path, file_oracle_path, method_oracle_path, model_dir_path, evaluation_file_path, vocabulary_size, lstm_core_length, lstm_seq_length = 200, neg_method_num = 10, split_ratio = 0.8, activation_function = 'tanh', inner_activation_function = 'hard_sigmoid', distance_function = 'cos', initializer = 'glorot_uniform', inner_initializer = 'orthogonal', regularizer = None, optimizer = RMSprop(lr=0.001, rho = 0.9, epsilon=1e-8, decay=0.0), dropout = 0.0, epoch_num = 100, k_value = 10, rel_threshold = 0.5):
+def main_siamese_lstm(bug_contents_path, code_contents_path, file_oracle_path, method_oracle_path, model_dir_path, evaluation_file_path, vocabulary_size, lstm_core_length, lstm_seq_length = 200, neg_method_num = 10, split_ratio = 0.8, activation_function = 'tanh', inner_activation_function = 'hard_sigmoid', distance_function = 'cos', initializer = 'glorot_uniform', inner_initializer = 'orthogonal', regularizer = None, optimizer = RMSprop(lr=0.001, rho = 0.9, epsilon=1e-8, decay=0.0), dropout = 0.0, epoch_num = 100, k_value = 10, rel_threshold = 0.5, embedding_dimension = -1):
 
     if not os.path.isdir(model_dir_path):
         os.mkdir(model_dir_path)
@@ -39,7 +39,7 @@ def main_siamese_lstm(bug_contents_path, code_contents_path, file_oracle_path, m
 
 
     print("building lstm siamese network:")
-    model = siamese_lstm(lstm_seq_length, vocabulary_size, lstm_core_length, activation_function = activation_function, inner_activation_function = inner_activation_function, distance_function = distance_function, initializer = initializer, inner_initializer = inner_initializer, regularizer = regularizer, optimizer = optimizer, dropout = dropout)
+    model = siamese_lstm(lstm_seq_length, vocabulary_size, lstm_core_length, activation_function = activation_function, inner_activation_function = inner_activation_function, distance_function = distance_function, initializer = initializer, inner_initializer = inner_initializer, regularizer = regularizer, optimizer = optimizer, dropout = dropout, embedding_dimension=embedding_dimension)
 
     #save the model structure to file
     model_structure_path = os.path.join(model_dir_path, "model_structure")
@@ -54,7 +54,7 @@ def main_siamese_lstm(bug_contents_path, code_contents_path, file_oracle_path, m
     for epoch in range(epoch_num):
         print("training epoch {}:".format(epoch))
         batch_index = 1
-        for bug_batch, code_batch, label_batch in batch_gen(bug_contents, code_contents, file_oracle, method_oracle, tokenizer, vocabulary_size, lstm_seq_length, nb_train_bug, neg_method_num):
+        for bug_batch, code_batch, label_batch in batch_gen(bug_contents, code_contents, file_oracle, method_oracle, tokenizer, vocabulary_size, lstm_seq_length, nb_train_bug, neg_method_num, ):
             print("training batch {}, size {}".format(batch_index, len(bug_batch)))
             model.train_on_batch([bug_batch, reverse_seq(bug_batch), code_batch, reverse_seq(code_batch)], label_batch)
             batch_index = batch_index + 1
@@ -65,7 +65,7 @@ def main_siamese_lstm(bug_contents_path, code_contents_path, file_oracle_path, m
 
     #predicting on the test data
     print("computing predictions on the test data:")
-    test_oracle, predictions = generate_predictions(model, bug_contents, code_contents, file_oracle, method_oracle, nb_train_bug, tokenizer, lstm_seq_length, vocabulary_size, neg_method_num)
+    test_oracle, predictions = generate_predictions(model, bug_contents, code_contents, file_oracle, method_oracle, nb_train_bug, tokenizer, lstm_seq_length, vocabulary_size, neg_method_num, embedding_dimension=embedding_dimension)
 
     print("finished computing predictions on the test data.")
 
@@ -80,17 +80,18 @@ def main_siamese_lstm(bug_contents_path, code_contents_path, file_oracle_path, m
     export_evaluation(evaluations, evaluation_file_path)
     print("finished writing evalution performance to file.")
 
-def generate_predictions(model, bug_contents, code_contents, file_oracle, method_oracle, nb_train_bug, tokenizer, lstm_seq_length, vocabulary_size, neg_method_num):
+def generate_predictions(model, bug_contents, code_contents, file_oracle, method_oracle, nb_train_bug, tokenizer, lstm_seq_length, vocabulary_size, neg_method_num, embedding_dimension = -1):
     predictions = []
     test_oracle = []
     for bug_index in range(nb_train_bug, len(bug_contents)):
         print("generating predictions for bug {} :".format(bug_index))
-        test_oracle.append(file_oracle[bug_index][0])
+
         one_bug_prediction = []
-        one_hot_bug_seq = convert_to_lstm_input_form(bug_contents[bug_index], tokenizer,lstm_seq_length, vocabulary_size)
+        one_hot_bug_seq = convert_to_lstm_input_form(bug_contents[bug_index], tokenizer,lstm_seq_length, vocabulary_size, embedding_dimension=embedding_dimension)
         if len(one_hot_bug_seq) == 0:
             print("testing bug sequence is void!")
             continue
+        test_oracle.append(file_oracle[bug_index][0])
         one_hot_bug_seq = np.asarray([one_hot_bug_seq])
 
         #traverse each code file
@@ -102,7 +103,7 @@ def generate_predictions(model, bug_contents, code_contents, file_oracle, method
             for one_method in method_list:
                 print("for one method:")
                 print(one_method)
-                one_hot_code_seq = convert_to_lstm_input_form(one_method, tokenizer,lstm_seq_length, vocabulary_size)
+                one_hot_code_seq = convert_to_lstm_input_form(one_method, tokenizer,lstm_seq_length, vocabulary_size, embedding_dimension = embedding_dimension)
                 if len(one_hot_code_seq) == 0:
                     continue
                 one_hot_code_seq = np.asarray([one_hot_code_seq])
@@ -122,7 +123,7 @@ def generate_predictions(model, bug_contents, code_contents, file_oracle, method
 def main():
     args = parseArgs();
     optimizer = parse_optimizer(args)
-    main_siamese_lstm(args.bug_contents_path, args.code_contents_path, args.file_oracle_path, args.method_oracle_path, args.model_dir_path, args.evaluation_path, args.vocabulary_size, args.lstm_core_length, lstm_seq_length = args.lstm_seq_length, neg_method_num = args.neg_method_num, split_ratio = args.split_ratio, activation_function = args.activation_function, inner_activation_function = args.inner_activation_function, distance_function = args.distance_function, initializer = args.initializer, inner_initializer = args.inner_initializer, regularizer = args.regularizer, optimizer = optimizer, dropout = args.dropout, epoch_num = args.epoch_num, k_value = args.k_value, rel_threshold = args.rel_threshold)
+    main_siamese_lstm(args.bug_contents_path, args.code_contents_path, args.file_oracle_path, args.method_oracle_path, args.model_dir_path, args.evaluation_path, args.vocabulary_size, args.lstm_core_length, lstm_seq_length = args.lstm_seq_length, neg_method_num = args.neg_method_num, split_ratio = args.split_ratio, activation_function = args.activation_function, inner_activation_function = args.inner_activation_function, distance_function = args.distance_function, initializer = args.initializer, inner_initializer = args.inner_initializer, regularizer = args.regularizer, optimizer = optimizer, dropout = args.dropout, epoch_num = args.epoch_num, k_value = args.k_value, rel_threshold = args.rel_threshold, embedding_dimension = args.embedding_dimension)
 if __name__ == '__main__':
     start = time.clock()
     main()

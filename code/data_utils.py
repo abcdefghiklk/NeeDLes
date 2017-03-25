@@ -16,23 +16,52 @@ def get_tokenizer(bug_contents, code_contents, vocabulary_size):
     tokenizer.fit_on_texts(bug_contents + code_contents)
     return tokenizer
 
-def convert_to_lstm_input_form(text, tokenizer, lstm_length, vocabulary_size):
-    sequence = tokenizer.texts_to_sequences([text])
-    if len(sequence) == 0:
+def convert_to_one_hot(text, tokenizer, lstm_length, vocabulary_size):
+    sequence = tokenizer.texts_to_sequences(text)
+    if len(sequence[0]) == 0:
         one_hot_seq = []
     else:
         padded_sequence = pad_sequences(sequence, maxlen = lstm_length, padding = 'post', truncating='post' )
-        one_hot_seq = transform_to_one_hot(padded_sequence[0], vocabulary_size)
+        one_hot_seq = transform_to_one_hot(padded_sequence, vocabulary_size)
     return one_hot_seq
 
-def batch_gen(bug_contents, code_contents, file_oracle, method_oracle, tokenizer,vocabulary_size, lstm_length, nb_bugs, nb_negative_methods):
+def convert_to_sequence(text, tokenizer, lstm_length, vocabulary_size):
+    sequence = tokenizer.texts_to_sequences(text)
+    if len(sequence[0]) == 0:
+        seq = []
+    else:
+        seq = pad_sequences(sequence, maxlen = lstm_length, padding = 'post', truncating='post' )
+    return seq
+
+def convert_to_lstm_input_form(text, tokenizer, lstm_length, vocabulary_size, embedding_dimension = -1):
+    sequence = tokenizer.texts_to_sequences(text)
+    padded_sequence = []
+    if len(sequence[0]) == 0:
+        one_hot_seq = []
+    else:
+        padded_sequence = pad_sequences(sequence, maxlen = lstm_length, padding = 'post', truncating='post' )
+        if embedding_dimension < 0:
+            padded_sequence = transform_to_one_hot(padded_sequence, vocabulary_size)
+    return padded_sequence
+
+
+   # if embedded == True:
+   #     return convert_to_sequence(text, tokenizer, lstm_length, vocabulary_size)
+   # else:
+   #     return convert_to_one_hot(text, tokenizer, lstm_length, vocabulary_size)
+
+
+def batch_gen(bug_contents, code_contents, file_oracle, method_oracle, tokenizer,vocabulary_size, lstm_length, nb_bugs, nb_negative_methods, embedding_dimension = -1):
+    sample_num = 50
     for i in range(nb_bugs):
         bug_batch = []
         code_batch = []
         rel_batch = []
         # one-hot representation of bug
-        one_hot_bug_seq = convert_to_lstm_input_form(bug_contents[i], tokenizer,lstm_length, vocabulary_size)
-        if len(one_hot_bug_seq) == 0:
+
+        bug_seq = convert_to_lstm_input_form(bug_contents[i], tokenizer,lstm_length, vocabulary_size, embedding_dimension)
+
+        if len(bug_seq) == 0:
             print('void bug sequence after tokenization!')
             continue
         # positive instances for this bug
@@ -40,10 +69,11 @@ def batch_gen(bug_contents, code_contents, file_oracle, method_oracle, tokenizer
         if len(relevant_methods_str)>1:
             relevant_methods_list = relevant_methods_str.split("\t")
             for one_method in relevant_methods_list:
-                method_one_hot = convert_to_lstm_input_form(one_method, tokenizer,lstm_length, vocabulary_size)
-                if len(method_one_hot) > 0:
-                    bug_batch.append(one_hot_bug_seq)
-                    code_batch.append(method_one_hot)
+                #method_one_hot = convert_to_lstm_input_form(one_method, tokenizer,lstm_length, vocabulary_size)
+                method_seq = convert_to_lstm_input_form(one_method, tokenizer,lstm_length, vocabulary_size, embedding_dimension)
+                if len(method_seq) > 0:
+                    bug_batch.append(bug_seq)
+                    code_batch.append(method_seq)
                     rel_batch.append(1)
 
         # negative instances for this bug
@@ -51,14 +81,23 @@ def batch_gen(bug_contents, code_contents, file_oracle, method_oracle, tokenizer
         for one_code_index_list in negative_code_index_list:
             neg_method_list = get_top_methods_in_file(code_contents[one_code_index_list], lstm_length, nb_negative_methods, tokenizer)
             for one_method in neg_method_list:
-                method_one_hot = convert_to_lstm_input_form(one_method, tokenizer,lstm_length, vocabulary_size)
-                if len(method_one_hot) > 0:
-                    bug_batch.append(one_hot_bug_seq)
-                    code_batch.append(method_one_hot)
+                method_seq = convert_to_lstm_input_form(one_method, tokenizer,lstm_length, vocabulary_size, embedding_dimension)
+                if len(method_seq) > 0:
+                    bug_batch.append(bug_seq)
+                    code_batch.append(method_seq)
                     rel_batch.append(0)
+
+        bug_batch, code_batch, rel_batch = random_select(bug_batch, code_batch,rel_batch, sample_num)
         yield np.asarray(bug_batch), np.asarray(code_batch), np.asarray(rel_batch)
 
+def random_select(bug_batch, code_batch, rel_batch, sample_num):
+    total_sample_num = len(bug_batch)
 
+    index_list = random.sample(range(total_sample_num), sample_num)
+    sample_bug_batch = [bug_batch[i] for i in index_list]
+    sample_code_batch = [code_batch[i] for i in index_list]
+    sample_rel_batch = [rel_batch[i] for i in index_list]
+    return sample_bug_batch, sample_code_batch, sample_rel_batch
 def get_top_methods_in_file(file_content, max_len, max_num, tokenizer):
     method_list = []
     top_method_list = []
@@ -172,25 +211,31 @@ def to_array():
     for i in range():
         yield i
 
-def transform_to_one_hot(text_seq,vocabulary_size):
+def transform_to_one_hot(sequence_list,vocabulary_size):
     output_seq=[]
-
-    for one_index in text_seq:
-        zero_seq = [0] * vocabulary_size
-        if one_index > 0:
-            zero_seq[one_index-1] = 1
-        output_seq.append(zero_seq)
+    for one_sequence in sequence_list:
+        output_one_sequence = []
+        for one_index in one_sequence:
+            zero_seq = [0] * vocabulary_size
+            if one_index > 0:
+                zero_seq[one_index-1] = 1
+            output_one_sequence.append(zero_seq)
         #print(one_hot_seq)
+        output_seq.append(output_one_sequence)
 
     return(output_seq)
 
 def reverse_seq(original_seq):
     new_seq = []
-    for one_seq in original_seq:
-        one_seq_reversed = []
-        for i in range(len(one_seq)):
-            one_seq_reversed.append(one_seq[-i-1])
-        new_seq.append(one_seq_reversed)
-    return(np.asarray(new_seq))
+    if len(original_seq.shape) == 1:
+         for i in range(len(original_seq)):
+            new_seq.append(original_seq[-i-1])
+    else:
+        for one_seq in original_seq:
+            one_seq_reversed = []
+            for i in range(len(one_seq)):
+                one_seq_reversed.append(one_seq[-i-1])
+            new_seq.append(one_seq_reversed)
+    return np.asarray(new_seq)
 
 

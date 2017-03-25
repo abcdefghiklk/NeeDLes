@@ -68,6 +68,9 @@ def parse_config(config_file_path):
         split_ratio = config.getfloat('oracle_reader','split_ratio')
         run_python_str = run_python_str + ' --sr {}'.format(split_ratio)
 
+    if config.has_option('oracle_reader','embedding_dimension'):
+        embedding_dimension = config.getint('oracle_reader','embedding_dimension')
+        run_python_str = run_python_str + ' --em {}'.format(embedding_dimension)
     if config.has_option('network_structure','lstm_core_length'):
         lstm_core_length = config.getint('network_structure','lstm_core_length')
         run_python_str = run_python_str + ' --l {}'.format(lstm_core_length)

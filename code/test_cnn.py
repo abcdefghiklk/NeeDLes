@@ -173,6 +173,26 @@ def test_pad_sequences():
     #bug_seq = transform_to_one_hot(bug_seq, 50)
     #code_seq = transform_to_one_hot(code_seq, 50)
     #print(bug_seq)
+
+def data_generator(bug_contents, code_contents, tokenizer,lstm_length, vocabulary_size):
+    bug_train_batch = []
+    code_train_batch = []
+    rel_train_batch = []
+    for i in range(10):
+        s = convert_to_lstm_input_form(bug_contents[i], tokenizer,lstm_length, vocabulary_size)
+        #if len(s) != 0:
+        #    bug_train_batch = np.asarray([s])
+
+        r = convert_to_lstm_input_form(code_contents[i], tokenizer,lstm_length, vocabulary_size)
+        #if len(r) != 0:
+        #    code_train_batch = np.asarray([r])
+        if i>4:
+            rel_train_batch = 1
+        else:
+            rel_train_batch = 0
+
+        yield [bug_train_batch,reverse_seq(bug_train_batch),code_train_batch,reverse_seq(code_train_batch)], np.asarray([rel_train_batch])
+
 if __name__ == '__main__':
 
     #test_siamese_lstm()
@@ -184,32 +204,60 @@ if __name__ == '__main__':
 
     [bug_contents,code_contents,file_oracle, method_oracle] = load_data(bug_contents_path, code_contents_path, file_oracle_path, method_oracle_path)
     lstm_length = 50
-    vocabulary_size = 200
-    lstm_core_length = 4
+    vocabulary_size = 100
+    lstm_core_length = 10
+    sample_num = 50
     #labels = np.random.randint(2, size=100)
-    tokenizer = get_tokenizer(bug_contents[0:10], code_contents[0:10], vocabulary_size)
-    model = siamese_lstm(lstm_length, vocabulary_size, lstm_core_length, optimizer = 'adam')
-
+    tokenizer = get_tokenizer(bug_contents, code_contents, vocabulary_size)
+    model = siamese_lstm(lstm_length, vocabulary_size, lstm_core_length, optimizer = 'adam', embedding_dimension=20)#, embedded_dimension = 64)
     bug_train_batch = []
     code_train_batch = []
-    rel_train_batch = []
-    for i in range(10):
-        bug_train_batch.append(convert_to_lstm_input_form(bug_contents[i], tokenizer,lstm_length, vocabulary_size))
-        code_train_batch.append(convert_to_lstm_input_form(code_contents[i], tokenizer,lstm_length, vocabulary_size))
-        if i>4:
-            rel_train_batch.append(1)
-        else:
-            rel_train_batch.append(0)
+    for i in range(sample_num):
+        bug_seq = convert_to_lstm_input_form([bug_contents[i]], tokenizer, lstm_length, vocabulary_size, embedding_dimension=20)
+        if len(bug_seq) == 0:
+            continue
+   # bug_train_batch = tokenizer.texts_to_sequences(bug_contents[:sample_num])
+    #print(bug_train_batch)
+    #bug_train_batch = pad_sequences(bug_train_batch, maxlen = lstm_length, padding = 'post', truncating='post' )
+
+
+        code_seq = convert_to_lstm_input_form([code_contents[i]], tokenizer, lstm_length, vocabulary_size, embedding_dimension=20)
+        if len(code_seq) == 0:
+            continue
+        bug_train_batch.append(bug_seq[0])
+        code_train_batch.append(code_seq[0])
 
     bug_train_batch = np.asarray(bug_train_batch)
     code_train_batch = np.asarray(code_train_batch)
-    rel_train_batch = np.asarray(rel_train_batch)
-    model.fit([bug_train_batch, reverse_seq(bug_train_batch), code_train_batch, reverse_seq(code_train_batch)], rel_train_batch, nb_epoch=150)
-    for i in range(10):
+    rel_train_batch = np.random.randint(2, size=len(bug_train_batch))
+    model.fit([bug_train_batch, reverse_seq(bug_train_batch),code_train_batch, reverse_seq(code_train_batch)], rel_train_batch, batch_size=10, nb_epoch=10)
+
+    for i in range(len(bug_train_batch)):
         predictions = model.predict([np.asarray([bug_train_batch[i]]), reverse_seq(np.asarray([bug_train_batch[i]])), np.asarray([code_train_batch[i]]), reverse_seq(np.asarray([code_train_batch[i]]))])
         pred_value = predictions[0][0][0]
-        print("{} {}".format(abs(pred_value),rel_train_batch[i]))
+        print("{} {}".format(pred_value,rel_train_batch[i]))
+    #bug_train_batch = []
+    #code_train_batch = []
+    #rel_train_batch = []
+    #for i in range(10):
+    #    s = tokenizer.t(bug_contents[i], tokenizer,lstm_length, vocabulary_size)
+    #    if len(s) == 0:
+    #        continue
 
+    #    bug_train_batch.append(s)
+    #    r = convert_to_lstm_input_form(code_contents[i], tokenizer,lstm_length, vocabulary_size)
+    #    if len(r) == 0:
+    #        continue
+    #    code_train_batch.append(r)
+    #    if i>4:
+    #        rel_train_batch.append(1)
+    #    else:
+    #        rel_train_batch.append(0)
+
+
+    #bug_train_batch = np.asarray(bug_train_batch)
+    #code_train_batch = np.asarray(code_train_batch)
+    #rel_train_batch = np.asarray(rel_train_batch)
 
 
 
