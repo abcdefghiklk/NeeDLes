@@ -203,13 +203,14 @@ if __name__ == '__main__':
     method_oracle_path = "C:/Users/dell/Dropbox/NeeDLes/data/Hyloc_data/tomcat_relevant_methods.txt"
 
     [bug_contents,code_contents,file_oracle, method_oracle] = load_data(bug_contents_path, code_contents_path, file_oracle_path, method_oracle_path)
+    optimizer = SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True, clipnorm = 1.)
     lstm_length = 50
     vocabulary_size = 100
     lstm_core_length = 10
     sample_num = 50
     #labels = np.random.randint(2, size=100)
     tokenizer = get_tokenizer(bug_contents, code_contents, vocabulary_size)
-    model = siamese_lstm(lstm_length, vocabulary_size, lstm_core_length, optimizer = 'adam', embedding_dimension=20)#, embedded_dimension = 64)
+    model = siamese_lstm(lstm_length, vocabulary_size, lstm_core_length, optimizer = optimizer, embedding_dimension=20)#, embedded_dimension = 64)
     bug_train_batch = []
     code_train_batch = []
     for i in range(sample_num):

@@ -42,7 +42,7 @@ def load_model(model_structure_path, model_weights_path):
     return model
 
 
-def siamese_lstm(input_length, input_dim, lstm_core_length, activation_function ='relu', inner_activation_function='hard_sigmoid', distance_function = 'cos', initializer = 'glorot_uniform', inner_initializer = 'orthogonal', regularizer = regularizers.l2(0.01), optimizer = Adadelta(lr=1.0, rho = 0.95, epsilon=1e-8, decay=0.0), dropout = 0.0, embedding_dimension = -1):
+def siamese_lstm(input_length, input_dim, lstm_core_length, activation_function ='relu', inner_activation_function='hard_sigmoid', distance_function = 'cos', initializer = 'glorot_uniform', inner_initializer = 'orthogonal', regularizer = None, optimizer = Adadelta(lr=1.0, rho = 0.95, epsilon=1e-8, decay=0.0), dropout = 0.0, embedding_dimension = -1):
 
     if embedding_dimension > 0:
         input_left_1 = Input(shape = (input_length,))

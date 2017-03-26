@@ -51,8 +51,7 @@ def convert_to_lstm_input_form(text, tokenizer, lstm_length, vocabulary_size, em
    #     return convert_to_one_hot(text, tokenizer, lstm_length, vocabulary_size)
 
 
-def batch_gen(bug_contents, code_contents, file_oracle, method_oracle, tokenizer,vocabulary_size, lstm_length, nb_bugs, nb_negative_methods, embedding_dimension = -1):
-    sample_num = 50
+def batch_gen(bug_contents, code_contents, file_oracle, method_oracle, tokenizer,vocabulary_size, lstm_length, nb_bugs, nb_negative_methods, embedding_dimension = -1, sample_num = 50):
     for i in range(nb_bugs):
         bug_batch = []
         code_batch = []

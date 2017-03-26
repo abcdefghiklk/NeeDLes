@@ -29,6 +29,7 @@ def config_write(config_file_path):
     oracle_reader_config['split_ratio'] = '0.8'
     oracle_reader_config['lstm_seq_length'] = '200'
     oracle_reader_config['embedding_dimension'] = '64'
+    oracle_reader_config['sample_num'] = '50'
 
     config['network_structure']={}
     network_structure_config = config['network_structure']
