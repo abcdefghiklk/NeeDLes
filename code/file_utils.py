@@ -6,6 +6,19 @@ import argparse
 import time
 import re
 
+def form(value):
+    return "%.3f" % value
+
+def export_predictions(oracle_list, prediction_list, dir_path):
+    for i in range(len(oracle_list)):
+        file_path = os.path.join(dir_path, "prediction_{}".format(i))
+        data_out = codecs.open(file_path,'w')
+        data_out.write(str(oracle_list[i]))
+        data_out.write("\n")
+        prediction_str = [form(a) for a in prediction_list[i]]
+        data_out.write(str(prediction_str))
+        data_out.close()
+
 def load_data(bug_content_path, code_content_path, file_oracle_path, method_oracle_path):
     code_contents = load_contents(code_content_path)
     bug_contents = load_contents(bug_content_path)

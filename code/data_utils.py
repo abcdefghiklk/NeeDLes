@@ -58,7 +58,7 @@ def batch_gen(bug_contents, code_contents, file_oracle, method_oracle, tokenizer
         rel_batch = []
         # one-hot representation of bug
 
-        bug_seq = convert_to_lstm_input_form(bug_contents[i], tokenizer,lstm_length, vocabulary_size, embedding_dimension)
+        bug_seq = convert_to_lstm_input_form([bug_contents[i]], tokenizer,lstm_length, vocabulary_size, embedding_dimension)
 
         if len(bug_seq) == 0:
             print('void bug sequence after tokenization!')
@@ -69,10 +69,10 @@ def batch_gen(bug_contents, code_contents, file_oracle, method_oracle, tokenizer
             relevant_methods_list = relevant_methods_str.split("\t")
             for one_method in relevant_methods_list:
                 #method_one_hot = convert_to_lstm_input_form(one_method, tokenizer,lstm_length, vocabulary_size)
-                method_seq = convert_to_lstm_input_form(one_method, tokenizer,lstm_length, vocabulary_size, embedding_dimension)
+                method_seq = convert_to_lstm_input_form([one_method], tokenizer,lstm_length, vocabulary_size, embedding_dimension)
                 if len(method_seq) > 0:
-                    bug_batch.append(bug_seq)
-                    code_batch.append(method_seq)
+                    bug_batch.append(bug_seq[0])
+                    code_batch.append(method_seq[0])
                     rel_batch.append(1)
 
         # negative instances for this bug
@@ -80,10 +80,10 @@ def batch_gen(bug_contents, code_contents, file_oracle, method_oracle, tokenizer
         for one_code_index_list in negative_code_index_list:
             neg_method_list = get_top_methods_in_file(code_contents[one_code_index_list], lstm_length, nb_negative_methods, tokenizer)
             for one_method in neg_method_list:
-                method_seq = convert_to_lstm_input_form(one_method, tokenizer,lstm_length, vocabulary_size, embedding_dimension)
+                method_seq = convert_to_lstm_input_form([one_method], tokenizer,lstm_length, vocabulary_size, embedding_dimension)
                 if len(method_seq) > 0:
-                    bug_batch.append(bug_seq)
-                    code_batch.append(method_seq)
+                    bug_batch.append(bug_seq[0])
+                    code_batch.append(method_seq[0])
                     rel_batch.append(0)
 
         bug_batch, code_batch, rel_batch = random_select(bug_batch, code_batch,rel_batch, sample_num)

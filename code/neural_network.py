@@ -2,7 +2,7 @@ from keras.models import Sequential
 from keras.layers import Dense, Activation
 from keras.layers import Merge, Input, Embedding
 from keras.layers import core, merge
-from keras.models import Model
+from keras.models import Model, model_from_json
 from keras import regularizers
 from data_utils import *
 from keras.layers.recurrent import LSTM

@@ -93,23 +93,22 @@ def generate_predictions(model, bug_contents, code_contents, file_oracle, method
         print("generating predictions for bug {} :".format(bug_index))
 
         one_bug_prediction = []
-        one_hot_bug_seq = convert_to_lstm_input_form(bug_contents[bug_index], tokenizer,lstm_seq_length, vocabulary_size, embedding_dimension=embedding_dimension)
+        one_hot_bug_seq = convert_to_lstm_input_form([bug_contents[bug_index]], tokenizer,lstm_seq_length, vocabulary_size, embedding_dimension=embedding_dimension)
         if len(one_hot_bug_seq) == 0:
             print("testing bug sequence is void!")
             continue
         test_oracle.append(file_oracle[bug_index][0])
-        one_hot_bug_seq = np.asarray([one_hot_bug_seq])
-
+        one_hot_bug_seq = np.asarray(one_hot_bug_seq)
         #traverse each code file
         for method_list in code_method_list:
             print("for one code:")
             #obtain the prediction score for each method
             scores = []
             for one_method in method_list:
-                one_hot_code_seq = convert_to_lstm_input_form(one_method, tokenizer,lstm_seq_length, vocabulary_size, embedding_dimension = embedding_dimension)
+                one_hot_code_seq = convert_to_lstm_input_form([one_method], tokenizer,lstm_seq_length, vocabulary_size, embedding_dimension = embedding_dimension)
                 if len(one_hot_code_seq) == 0:
                     continue
-                one_hot_code_seq = np.asarray([one_hot_code_seq])
+                one_hot_code_seq = np.asarray(one_hot_code_seq)
                 prediction_result = model.predict([one_hot_bug_seq, reverse_seq(one_hot_bug_seq), one_hot_code_seq, reverse_seq(one_hot_code_seq)]);
                 value = abs(prediction_result[0][0][0])
                 print("prediction_result: {}".format(value))

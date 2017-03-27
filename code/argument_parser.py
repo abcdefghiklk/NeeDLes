@@ -91,7 +91,7 @@ def parse_optimizer(args):
         if args.rho is not None:
             if len(args.rho) == 1:
                 momentum = args.rho[0]
-        optimizer = SGD(lr = lr, momentum = momentum, decay = decay, clipnorm= 0.1)
+        optimizer = SGD(lr = lr, momentum = momentum, decay = decay)
     elif args.optimizer == 'Adagrad':
         lr = 0.01
         epsilon = 1e-08
@@ -102,7 +102,7 @@ def parse_optimizer(args):
             decay = args.decay
         if args.epsilon is not None:
             epsilon = args.epsilon
-        optimizer = Adagrad(lr = lr, epsilon = epsilon, decay = decay, clipnorm= 0.1)
+        optimizer = Adagrad(lr = lr, epsilon = epsilon, decay = decay)
     elif args.optimizer == 'Adadelta':
         lr = 1.0
         rho = 0.95
@@ -117,7 +117,7 @@ def parse_optimizer(args):
         if args.rho is not None:
             if len(args.rho) == 1:
                 rho = args.rho[0]
-        optimizer = Adadelta(lr = lr, rho = rho, epsilon = epsilon, decay = decay, clipnorm= 0.1)
+        optimizer = Adadelta(lr = lr, rho = rho, epsilon = epsilon, decay = decay)
     elif args.optimizer == 'Adam':
         lr = 0.001
         beta_1 = 0.9
@@ -134,7 +134,7 @@ def parse_optimizer(args):
             if len(args.rho) == 2:
                 beta_1 = args.rho[0]
                 beta_2 = args.rho[1]
-        optimizer = Adam(lr = lr, beta_1 = beta_1, beta_2 = beta_2, epsilon = epsilon, decay = decay, clipnorm= 0.1)
+        optimizer = Adam(lr = lr, beta_1 = beta_1, beta_2 = beta_2, epsilon = epsilon, decay = decay)
 
     elif args.optimizer == 'Adamax':
         lr = 0.002
@@ -152,7 +152,7 @@ def parse_optimizer(args):
             if len(args.rho) == 2:
                 beta_1 = args.rho[0]
                 beta_2 = args.rho[1]
-        optimizer = Adamax(lr = lr, beta_1 = beta_1, beta_2 = beta_2, epsilon = epsilon, decay = decay, clipnorm= 0.1)
+        optimizer = Adamax(lr = lr, beta_1 = beta_1, beta_2 = beta_2, epsilon = epsilon, decay = decay)
 
     elif args.optimizer == 'Nadam':
         lr = 0.002
@@ -170,7 +170,7 @@ def parse_optimizer(args):
             if len(args.rho) == 2:
                 beta_1 = args.rho[0]
                 beta_2 = args.rho[1]
-        optimizer = Nadam(lr = lr, beta_1 = beta_1, beta_2 = beta_2, epsilon = epsilon, schedule_decay = decay, clipnorm= 0.1)
+        optimizer = Nadam(lr = lr, beta_1 = beta_1, beta_2 = beta_2, epsilon = epsilon, schedule_decay = decay)
     else:
         lr = 0.001
         rho = 0.9
@@ -185,5 +185,5 @@ def parse_optimizer(args):
         if args.rho is not None:
             if len(args.rho) == 1:
                 rho = args.rho[0]
-        optimizer = RMSprop(lr = lr, rho = rho, epsilon = epsilon, decay = decay, clipnorm= 0.1)
+        optimizer = RMSprop(lr = lr, rho = rho, epsilon = epsilon, decay = decay)
     return optimizer

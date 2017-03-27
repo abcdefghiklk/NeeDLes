@@ -13,7 +13,7 @@ def parseArgs():
 
 def parse_config(config_file_path):
     config = ConfigParser.RawConfigParser()
-    config.read(confile_file_path)
+    config.read(config_file_path)
 
     its_file_path = config.get('input_output_paths','its_file_path')
     project_dir_path = config.get('input_output_paths','project_dir_path')
