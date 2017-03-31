@@ -11,6 +11,17 @@ from copy import deepcopy
 from keras.preprocessing.sequence import *
 from keras.utils.np_utils import to_categorical
 
+def cosine_similarity(vec_1, vec_2):
+    cos_sim =0
+    norm_1 = 0
+    norm_2 = 0
+    for val_1, val_2 in zip(vec_1, vec_2):
+        cos_sim = cos_sim + val_1 * val_2
+        norm_1 = norm_bug + val_1 * val_1
+        norm_2 = norm_code + val_2 * val_2
+
+    cos_sim = cos_sim/pow(norm_1 * norm_1, 0.5)
+    return(cos_sim)
 def get_tokenizer(bug_contents, code_contents, vocabulary_size):
     tokenizer = text.Tokenizer(nb_words = vocabulary_size)
     tokenizer.fit_on_texts(bug_contents + code_contents)

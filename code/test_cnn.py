@@ -211,7 +211,7 @@ if __name__ == '__main__':
     sample_num = 50
     #labels = np.random.randint(2, size=100)
     tokenizer = get_tokenizer(bug_contents[:sample_num], code_contents[:sample_num], vocabulary_size)
-    model = siamese_lstm(lstm_length, vocabulary_size, lstm_core_length, optimizer = optimizer, initializer = 'glorot_normal', embedding_dimension=-1)#, embedded_dimension = 64)
+    model = siamese_lstm(lstm_length, vocabulary_size, lstm_core_length, optimizer = optimizer, initializer = 'glorot_normal', embedding_dimension=10)#, embedded_dimension = 64)
     bug_train_batch = []
     code_train_batch = []
     for i in range(sample_num):
@@ -219,7 +219,6 @@ if __name__ == '__main__':
 
         if len(bug_seq) == 0:
             continue
-        print(np.asarray(bug_seq[0]).shape)
         code_seq = convert_to_lstm_input_form([code_contents[i]], tokenizer, lstm_length, vocabulary_size, embedding_dimension=-1)
         if len(code_seq) == 0:
             continue
@@ -230,12 +229,12 @@ if __name__ == '__main__':
     code_train_batch = np.asarray(code_train_batch)
 
 
-    #bug_train_batch = np.random.random((sample_num, lstm_length))
-    #code_train_batch = np.random.random((sample_num, lstm_length))
+    bug_train_batch = np.random.random((sample_num, lstm_length))
+    code_train_batch = np.random.random((sample_num, lstm_length))
 
     rel_train_batch = np.random.randint(2, size=len(bug_train_batch))
 
-    for i in range(300):
+    for i in range(5):
         model.train_on_batch([bug_train_batch,code_train_batch], rel_train_batch)
         keras_loss = model.test_on_batch([bug_train_batch,code_train_batch], rel_train_batch)
         print("keras loss = {}".format(keras_loss))
@@ -248,47 +247,29 @@ if __name__ == '__main__':
         print("my loss = {}\n\n".format(loss))
 
 
+    network_bug_vec = get_bug_vec_network(model)
+    network_code_vec = get_code_vec_network(model)
 
-    result  = model.predict([bug_train_batch[0],code_train_batch[0]],batch_size=1)
-    for one_result, one_oracle in zip(result, rel_train_batch):
-        print(one_result[0][0], one_oracle)
-    #loss = 0
-    #print(result[0][0][0])
-    #for i in range(len(rel_train_batch)):
-    #    loss = loss + pow(result[i][0][i] - rel_train_batch[i],2)
+    bug_seq = convert_to_lstm_input_form([bug_contents[0]], tokenizer, lstm_length, vocabulary_size, embedding_dimension=1)
+    bug_seq = np.asarray(bug_seq[0])
+    prediction_1 = network_bug_vec([[bug_seq]])
+    bug_vec = prediction_1[0][0]
 
-    #loss = loss/len(rel_train_batch)
-    #print(loss)
+    #prediction_2 = network_code_vec([[code_train_batch[0]]])
+    #code_vec = prediction_2[0][0]
 
+    #cos_sim =0
+    #norm_bug = 0
+    #norm_code = 0
+    #for bug_val, code_val in zip(bug_vec, code_vec):
+    #    cos_sim = cos_sim + bug_val* code_val
+    #    norm_bug = norm_bug + bug_val* bug_val
+    #    norm_code = norm_code + code_val* code_val
 
+    #cos_sim = cos_sim/pow(norm_bug * norm_code, 0.5)
+    #print(cos_sim)
 
-    #for i in range(len(bug_train_batch)):
-    #    predictions = model.predict([np.asarray([bug_train_batch[i]]), reverse_seq(np.asarray([bug_train_batch[i]])), np.asarray([code_train_batch[i]]), reverse_seq(np.asarray([code_train_batch[i]]))])
-    #    pred_value = predictions[0][0][0]
-    #    print("{} {}".format(pred_value,rel_train_batch[i]))
-    #bug_train_batch = []
-    #code_train_batch = []
-    #rel_train_batch = []
-    #for i in range(10):
-    #    s = tokenizer.t(bug_contents[i], tokenizer,lstm_length, vocabulary_size)
-    #    if len(s) == 0:
-    #        continue
-
-    #    bug_train_batch.append(s)
-    #    r = convert_to_lstm_input_form(code_contents[i], tokenizer,lstm_length, vocabulary_size)
-    #    if len(r) == 0:
-    #        continue
-    #    code_train_batch.append(r)
-    #    if i>4:
-    #        rel_train_batch.append(1)
-    #    else:
-    #        rel_train_batch.append(0)
-
-
-    #bug_train_batch = np.asarray(bug_train_batch)
-    #code_train_batch = np.asarray(code_train_batch)
-    #rel_train_batch = np.asarray(rel_train_batch)
-
+    #print(model.predict([np.asarray([bug_train_batch[0]]),np.asarray([code_train_batch[0]])]))
 
 
 

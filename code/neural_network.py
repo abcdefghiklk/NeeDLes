@@ -57,7 +57,7 @@ def siamese_lstm(input_length, input_dim, lstm_core_length, activation_function 
     else:
         masking_left = Masking(mask_value=0)(input_left)
 
-    lstm_left = Bidirectional(LSTM(output_dim = lstm_core_length, init = initializer, inner_init = inner_initializer, activation = activation_function, inner_activation = inner_activation_function, W_regularizer = regularizer, U_regularizer = regularizer, b_regularizer= regularizer, dropout_W = dropout, dropout_U=dropout))(masking_left)
+    lstm_left = Bidirectional(LSTM(output_dim = lstm_core_length, init = initializer, inner_init = inner_initializer, activation = activation_function, inner_activation = inner_activation_function, W_regularizer = regularizer, U_regularizer = regularizer, b_regularizer= regularizer, dropout_W = dropout, dropout_U=dropout, return_sequences = False))(masking_left)
 
     if embedding_dimension > 0:
         embedded_right = Embedding(input_dim+1, embedding_dimension, input_length = input_length, mask_zero = True)(input_right)
@@ -65,7 +65,7 @@ def siamese_lstm(input_length, input_dim, lstm_core_length, activation_function 
     else:
         masking_right = Masking(mask_value=0)(input_right)
 
-    lstm_right = Bidirectional(LSTM(output_dim = lstm_core_length, init = initializer, inner_init = inner_initializer, activation = activation_function, inner_activation = inner_activation_function, W_regularizer = regularizer, U_regularizer = regularizer, b_regularizer= regularizer, dropout_W = dropout, dropout_U=dropout))(masking_right)
+    lstm_right = Bidirectional(LSTM(output_dim = lstm_core_length, init = initializer, inner_init = inner_initializer, activation = activation_function, inner_activation = inner_activation_function, W_regularizer = regularizer, U_regularizer = regularizer, b_regularizer= regularizer, dropout_W = dropout, dropout_U=dropout, return_sequences= False))(masking_right)
     # 'sum', 'mul', 'concat', 'ave', 'cos', 'dot', 'max'.
 
     output = merge([lstm_left, lstm_right], mode = distance_function)
@@ -77,6 +77,12 @@ def siamese_lstm(input_length, input_dim, lstm_core_length, activation_function 
     model.compile(optimizer = optimizer, loss = 'mean_squared_error')
 
     return model
+
+def get_bug_vec_network(model):
+    return K.function([model.layers[0].input],[model.layers[6].output])
+
+def get_code_vec_network(model):
+    return K.function([model.layers[1].input],[model.layers[7].output])
 
 def squared_absolute_loss(y_true, y_pred):
     return K.mean(K.square(K.abs(y_pred) - y_true))

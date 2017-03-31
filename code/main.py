@@ -63,8 +63,12 @@ def main_siamese_lstm(bug_contents_path, code_contents_path, file_oracle_path, m
 
     #predicting on the test data
     print("computing predictions on the test data:")
-    test_oracle, predictions = generate_predictions(model, bug_contents, code_contents, file_oracle, method_oracle, nb_train_bug, tokenizer, lstm_seq_length, vocabulary_size, neg_method_num, embedding_dimension=embedding_dimension)
+    code_vec_list = generate_code_vec(model, code_contents, lstm_seq_length, neg_method_num, tokenizer, vocabulary_size)
 
+    bug_vec_list = generate_bug_vec(model, bug_contents[nb_train_bug:], lstm_seq_length, neg_method_num, tokenizer, vocabulary_size)
+
+    test_oracle = generate_test_oracle(file_oracle[nb_train_bug:])
+    predictions = generate_predictions(bug_vec_list, code_vec_list)
     print("finished computing predictions on the test data.")
 
     #evaluating on the test data
@@ -78,87 +82,65 @@ def main_siamese_lstm(bug_contents_path, code_contents_path, file_oracle_path, m
     export_evaluation(evaluations, evaluation_file_path)
     print("finished writing evalution performance to file.")
 
-def generate_predictions(model, bug_contents, code_contents, file_oracle, method_oracle, nb_train_bug, tokenizer, lstm_seq_length, vocabulary_size, neg_method_num, embedding_dimension = -1):
-    predictions = []
+
+def generate_code_vec(model, code_contents, lstm_seq_length, neg_method_num, tokenizer, vocabulary_size, embedding_dimension = -1):
+    network_code_vec = get_code_vec_network(model)
+    code_vec_list = []
+    for one_code_content in code_contents:
+        one_code_vec = []
+        method_list = get_top_methods_in_file(one_code_content, lstm_seq_length, neg_method_num, tokenizer)
+        for one_method in method_list:
+            method_seq = convert_to_lstm_input_form([one_method], tokenizer,lstm_seq_length, vocabulary_size, embedding_dimension = embedding_dimension)
+            if len(method_seq) == 0:
+                continue
+            method_seq = np.asarray(method_seq[0])
+            prediction = network_code_vec([[method_seq]])
+            method_vec = prediction[0][0]
+            one_code_vec.append(method_vec)
+        code_vec_list.append(code_vec_list)
+    return code_vec_list
+
+def generate_bug_vec(model, bug_contents, lstm_seq_length, neg_method_num, tokenizer, vocabulary_size, embedding_dimension = -1):
+    network_bug_vec = get_bug_vec_network(model)
+    bug_vec_list = []
+    for one_bug_content in bug_contents:
+        bug_seq = convert_to_lstm_input_form([one_bug_content], tokenizer,lstm_seq_length, vocabulary_size, embedding_dimension = embedding_dimension)
+            if len(bug_seq) == 0:
+                continue
+        bug_seq = np.asarray(bug_seq[0])
+        prediction = network_code_vec([[bug_seq]])
+        bug_vec = prediction[0][0]
+        bug_vec_list.append(bug_vec)
+    return bug_vec_list
+
+def generate_test_oracle(file_oracle):
     test_oracle = []
-    code_method_list = []
-    for one_code_content in code_contents:
-        method_list = get_top_methods_in_file(one_code_content, lstm_seq_length, neg_method_num, tokenizer)
-        code_method_list.append(method_list)
+    for one_oracle in file_oracle:
+        test_oracle.append(one_oracle[0])
 
+    return test_oracle
 
-    for bug_index in range(nb_train_bug, len(bug_contents)):
-        print("generating predictions for bug {} :".format(bug_index))
-
+def generate_predictions(bug_vec_list, code_vec_list):
+    predictions = []
+    for one_bug_vec in bug_vec_list:
         one_bug_prediction = []
-        bug_seq = convert_to_lstm_input_form([bug_contents[bug_index]], tokenizer,lstm_seq_length, vocabulary_size, embedding_dimension=embedding_dimension)
-        if len(bug_seq) == 0:
-            print("testing bug sequence is void!")
-            continue
-        test_oracle.append(file_oracle[bug_index][0])
-        bug_seq = np.asarray(bug_seq[0])
-        #traverse each code file
-        for method_list in code_method_list:
-            print("for one code:")
-            #obtain the prediction score for each method
+        for one_code_vec in code_vec_list:
             scores = []
-            for one_method in method_list:
-                method_seq = convert_to_lstm_input_form([one_method], tokenizer,lstm_seq_length, vocabulary_size, embedding_dimension = embedding_dimension)
-                if len(method_seq) == 0:
-                    continue
-                method_seq = np.asarray(method_seq[0])
-                prediction_result = model.predict([bug_seq, method_seq])
-                value = prediction_result[0][0]
-                print("prediction_result: {}".format(value))
-                scores.append(value)
-
-
-            #Here we can define different strategies from the method scores to the file score, here we only consider the average as a start
+            for one_method_vec in one_code_vec:
+                scores.append(cosine_similarity(one_bug_vec,one_method_vec))
             one_bug_prediction.append(np.mean(scores))
-            print("score for this code file: {}".format(np.mean(scores)))
         predictions.append(one_bug_prediction)
-    return test_oracle, predictions
+    return predictions
 
-def generate_predictions_generator(model, bug_contents, code_contents, file_oracle, method_oracle, nb_train_bug, tokenizer, lstm_seq_length, vocabulary_size, neg_method_num, embedding_dimension = -1):
-    #predictions = []
-    #test_oracle = []
-    code_method_list = []
-    for one_code_content in code_contents:
-        method_list = get_top_methods_in_file(one_code_content, lstm_seq_length, neg_method_num, tokenizer)
-        code_method_list.append(method_list)
-
-
-    for bug_index in range(nb_train_bug, len(bug_contents)):
-        print("generating predictions for bug {} :".format(bug_index))
-
+def generate_predictions_generator(bug_vec_list, code_vec_list, test_oracle):
+    for one_bug_vec, one_bug_oracle in zip(bug_vec_list, test_oracle):
         one_bug_prediction = []
-        bug_seq = convert_to_lstm_input_form([bug_contents[bug_index]], tokenizer,lstm_seq_length, vocabulary_size, embedding_dimension=embedding_dimension)
-        if len(bug_seq) == 0:
-            print("testing bug sequence is void!")
-            continue
-        test_oracle = file_oracle[bug_index][0]
-        bug_seq = np.asarray(bug_seq[0])
-
-        #traverse each code file
-        for method_list in code_method_list:
-            print("for one code:")
-            #obtain the prediction score for each method
+        for one_code_vec in code_vec_list:
             scores = []
-            for one_method in method_list:
-                method_seq = convert_to_lstm_input_form([one_method], tokenizer,lstm_seq_length, vocabulary_size, embedding_dimension = embedding_dimension)
-                if len(method_seq) == 0:
-                    continue
-                method_seq = np.asarray(method_seq[0])
-                prediction_result = model.predict([bug_seq, method_seq]);
-                value = prediction_result[0][0]
-                #print("prediction_result: {}".format(value))
-                scores.append(value)
-
-
-            #Here we can define different strategies from the method scores to the file score, here we only consider the average as a start
+            for one_method_vec in one_code_vec:
+                scores.append(cosine_similarity(one_bug_vec,one_method_vec))
             one_bug_prediction.append(np.mean(scores))
-            print("score for this code file: {}".format(np.mean(scores)))
-        yield test_oracle, one_bug_prediction
+        yield one_bug_oracle, one_bug_prediction
 
 def main():
     args = parseArgs();
