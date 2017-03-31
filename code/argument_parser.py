@@ -8,12 +8,10 @@ import re
 import math
 from file_utils import *
 from keras.optimizers import *
-from sklearn.model_selection import KFold
 from keras.models import Sequential
 from data_utils import *
 from neural_network import siamese_lstm
 from keras.utils.np_utils import to_categorical
-from sklearn.metrics import average_precision_score
 from evaluation import *
 import keras.preprocessing.text as text
 import argparse

@@ -5,7 +5,6 @@ from keras.layers import core, merge
 from keras.models import Model, model_from_json
 from keras.layers import Bidirectional
 from keras import regularizers
-from data_utils import *
 from keras.layers.recurrent import LSTM
 from keras.layers.core import *
 from keras.layers.convolutional import Convolution2D

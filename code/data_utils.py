@@ -85,7 +85,7 @@ def batch_gen(bug_contents, code_contents, file_oracle, method_oracle, tokenizer
                     bug_batch.append(bug_seq[0])
                     code_batch.append(method_seq[0])
                     rel_batch.append(0)
-	if sample_num < len(bug_batch):
+        if sample_num < len(bug_batch):
             bug_batch, code_batch, rel_batch = random_select(bug_batch, code_batch,rel_batch, sample_num)
         yield np.asarray(bug_batch), np.asarray(code_batch), np.asarray(rel_batch)
 
