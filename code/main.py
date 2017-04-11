@@ -41,10 +41,7 @@ def main_siamese_lstm(bug_contents_path, code_contents_path, file_oracle_path, m
 
     #save the model structure to file
     model_structure_path = os.path.join(model_dir_path, "model_structure")
-    json_string = model.to_json()
-    data_out = codecs.open(model_structure_path,'w')
-    data_out.write(json_string)
-    data_out.close()
+    save_model_structure(model,model_structure_path)
     print("finished building lstm siamese network.")
 
 
@@ -59,7 +56,7 @@ def main_siamese_lstm(bug_contents_path, code_contents_path, file_oracle_path, m
             batch_index = batch_index + 1
         #save the model weights after this epoch to file
         one_epoch_weight_path = os.path.join(model_dir_path, "weight_epoch_{}".format(epoch))
-        model.save_weights(one_epoch_weight_path)
+        save_model_weights(model,one_epoch_weight_path)
     print("finished training lstm siamese network.")
 
     #predicting on the test data

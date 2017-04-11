@@ -23,7 +23,7 @@ def save_model_structure(model, model_structure_path):
     data_out.close()
 
 def save_model_weights(model, model_weights_path):
-    model.save_weights(one_epoch_weight_path)
+    model.save_weights(model_weights_path)
 
 def load_model_structure(model_structure_path):
     data_in = codecs.open(model_structure_path)
@@ -43,7 +43,7 @@ def load_model(model_structure_path, model_weights_path):
 
 
 def siamese_lstm(input_length, input_dim, lstm_core_length, activation_function ='tanh', inner_activation_function='hard_sigmoid', distance_function = 'cos', initializer = 'glorot_uniform', inner_initializer = 'orthogonal', regularizer = None, optimizer = Adadelta(lr=1.0, rho = 0.95, epsilon=1e-8, decay=0.0), dropout = 0.0, embedding_dimension = -1):
-
+    K.set_learning_phase(1)
     if embedding_dimension > 0:
         input_left = Input(shape = (input_length,))
         input_right = Input(shape = (input_length,))
