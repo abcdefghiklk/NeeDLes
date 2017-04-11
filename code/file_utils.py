@@ -25,8 +25,8 @@ def export_predictions(oracle_list, prediction_list, dir_path):
         export_one_bug_prediction(oracle_list[i], prediction_list[i], file_path)
 
 def load_data(bug_content_path, code_content_path, file_oracle_path, method_oracle_path, encoding = 'gbk'):
-    code_contents = load_contents(code_content_path)
-    bug_contents = load_contents(bug_content_path)
+    code_contents = load_contents(code_content_path, encoding)
+    bug_contents = load_contents(bug_content_path, encoding)
     method_oracle = load_relevant_methods(method_oracle_path)
     file_oracle = read_oracle(file_oracle_path)
 
