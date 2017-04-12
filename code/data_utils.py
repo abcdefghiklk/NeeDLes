@@ -17,10 +17,10 @@ def cosine_similarity(vec_1, vec_2):
     norm_2 = 0
     for val_1, val_2 in zip(vec_1, vec_2):
         cos_sim = cos_sim + val_1 * val_2
-        norm_1 = norm_bug + val_1 * val_1
-        norm_2 = norm_code + val_2 * val_2
+        norm_1 = norm_1 + val_1 * val_1
+        norm_2 = norm_2 + val_2 * val_2
 
-    cos_sim = cos_sim/pow(norm_1 * norm_1, 0.5)
+    cos_sim = cos_sim/pow(norm_1 * norm_2, 0.5)
     return(cos_sim)
 def get_tokenizer(bug_contents, code_contents, vocabulary_size):
     tokenizer = text.Tokenizer(nb_words = vocabulary_size)
@@ -60,13 +60,15 @@ def convert_to_lstm_input_form(text, tokenizer, lstm_length, vocabulary_size, em
    #     return convert_to_sequence(text, tokenizer, lstm_length, vocabulary_size)
    # else:
    #     return convert_to_one_hot(text, tokenizer, lstm_length, vocabulary_size)
-
-
 def batch_gen(bug_contents, code_contents, file_oracle, method_oracle, tokenizer,vocabulary_size, lstm_length, nb_bugs, nb_negative_methods, embedding_dimension = -1, sample_num = 50):
+
+    pos_sample_num = int(math.floor(sample_num/2))
+    neg_sample_num = int(sample_num - pos_sample_num)
+    print(neg_sample_num, pos_sample_num)
     for i in range(nb_bugs):
-        bug_batch = []
-        code_batch = []
-        rel_batch = []
+        bug_batch_pos = []
+        code_batch_pos = []
+        rel_batch_pos = []
         # one-hot representation of bug
 
         bug_seq = convert_to_lstm_input_form([bug_contents[i]], tokenizer,lstm_length, vocabulary_size, embedding_dimension)
@@ -82,32 +84,43 @@ def batch_gen(bug_contents, code_contents, file_oracle, method_oracle, tokenizer
                 #method_one_hot = convert_to_lstm_input_form(one_method, tokenizer,lstm_length, vocabulary_size)
                 method_seq = convert_to_lstm_input_form([one_method], tokenizer,lstm_length, vocabulary_size, embedding_dimension)
                 if len(method_seq) > 0:
-                    bug_batch.append(bug_seq[0])
-                    code_batch.append(method_seq[0])
-                    rel_batch.append(1)
+                    bug_batch_pos.append(bug_seq[0])
+                    code_batch_pos.append(method_seq[0])
+                    rel_batch_pos.append(1)
 
+            bug_batch_pos, code_batch_pos, rel_batch_pos = random_select(bug_batch_pos, code_batch_pos, rel_batch_pos, pos_sample_num)
         # negative instances for this bug
+
+        bug_batch_neg = []
+        code_batch_neg = []
+        rel_batch_neg = []
         negative_code_index_list = file_oracle[i][1]
         for one_code_index_list in negative_code_index_list:
             neg_method_list = get_top_methods_in_file(code_contents[one_code_index_list], lstm_length, nb_negative_methods, tokenizer)
             for one_method in neg_method_list:
                 method_seq = convert_to_lstm_input_form([one_method], tokenizer,lstm_length, vocabulary_size, embedding_dimension)
                 if len(method_seq) > 0:
-                    bug_batch.append(bug_seq[0])
-                    code_batch.append(method_seq[0])
-                    rel_batch.append(0)
-        if sample_num < len(bug_batch):
-            bug_batch, code_batch, rel_batch = random_select(bug_batch, code_batch,rel_batch, sample_num)
+                    bug_batch_neg.append(bug_seq[0])
+                    code_batch_neg.append(method_seq[0])
+                    rel_batch_neg.append(0)
+	if(len(bug_batch_neg) == 0):
+	    continue
+        bug_batch_neg, code_batch_neg, rel_batch_neg = random_select(bug_batch_neg, code_batch_neg, rel_batch_neg, neg_sample_num)
+        bug_batch = bug_batch_pos + bug_batch_neg
+        code_batch = code_batch_pos + code_batch_neg
+        rel_batch = rel_batch_pos + rel_batch_neg
+        #if sample_num < len(bug_batch):
+        #bug_batch, code_batch, rel_batch = random_select(bug_batch, code_batch,rel_batch, sample_num)
         yield np.asarray(bug_batch), np.asarray(code_batch), np.asarray(rel_batch)
 
 def random_select(bug_batch, code_batch, rel_batch, sample_num):
     total_sample_num = len(bug_batch)
-
-    index_list = random.sample(range(total_sample_num), sample_num)
+    index_list = [random.randint(0, total_sample_num-1) for k in range(sample_num)]
     sample_bug_batch = [bug_batch[i] for i in index_list]
     sample_code_batch = [code_batch[i] for i in index_list]
     sample_rel_batch = [rel_batch[i] for i in index_list]
     return sample_bug_batch, sample_code_batch, sample_rel_batch
+
 def get_top_methods_in_file(file_content, max_len, max_num, tokenizer):
     method_list = []
     top_method_list = []
