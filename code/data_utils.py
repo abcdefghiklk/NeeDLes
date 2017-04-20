@@ -10,6 +10,9 @@ import numpy as np
 from copy import deepcopy
 from keras.preprocessing.sequence import *
 from keras.utils.np_utils import to_categorical
+import gensim
+from gensim.corpora import WikiCorpus
+from gensim.models import Word2Vec, KeyedVectors
 
 def cosine_similarity(vec_1, vec_2):
     cos_sim =0
@@ -19,9 +22,14 @@ def cosine_similarity(vec_1, vec_2):
         cos_sim = cos_sim + val_1 * val_2
         norm_1 = norm_1 + val_1 * val_1
         norm_2 = norm_2 + val_2 * val_2
-
-    cos_sim = cos_sim/pow(norm_1 * norm_2, 0.5)
+    if(norm_1 ==0):
+        print("vector_1 all zeros!")
+    elif(norm_2 == 0):
+        print("vector_2 all zeros!")
+    else:
+        cos_sim = cos_sim/pow(norm_1 * norm_2, 0.5)
     return(cos_sim)
+
 def get_tokenizer(bug_contents, code_contents, vocabulary_size):
     tokenizer = text.Tokenizer(nb_words = vocabulary_size)
     tokenizer.fit_on_texts(bug_contents + code_contents)
@@ -44,15 +52,24 @@ def convert_to_sequence(text, tokenizer, lstm_length, vocabulary_size):
         seq = pad_sequences(sequence, maxlen = lstm_length, padding = 'post', truncating='post' )
     return seq
 
-def convert_to_lstm_input_form(text, tokenizer, lstm_length, vocabulary_size, embedding_dimension = -1):
-    sequence = tokenizer.texts_to_sequences(text)
+def convert_to_lstm_input_form(text, tokenizer, lstm_length, vocabulary_size, word2vec_model, embedding_dimension = -1, word2vec = False):
     padded_sequence = []
-    if len(sequence[0]) == 0:
-        one_hot_seq = []
+    if word2vec == True:
+        for one_sequence in text:
+            sequence_vector_list = []
+            for one_token in one_sequence:
+                one_vector = word2vec_model(one_token)
+                sequence_vector_list.append(one_vector)
+            padded_sequence.append(sequence_vector_list)
     else:
-        padded_sequence = pad_sequences(sequence, maxlen = lstm_length, padding = 'post', truncating='post' )
-        if embedding_dimension < 0:
-            padded_sequence = transform_to_one_hot(padded_sequence, vocabulary_size)
+        sequence = tokenizer.texts_to_sequences(text)
+
+        if len(sequence[0]) == 0:
+            one_hot_seq = []
+        else:
+            padded_sequence = pad_sequences(sequence, maxlen = lstm_length, padding = 'post', truncating='post' )
+            if embedding_dimension < 0:
+                padded_sequence = transform_to_one_hot(padded_sequence, vocabulary_size)
     return padded_sequence
 
 
@@ -60,11 +77,60 @@ def convert_to_lstm_input_form(text, tokenizer, lstm_length, vocabulary_size, em
    #     return convert_to_sequence(text, tokenizer, lstm_length, vocabulary_size)
    # else:
    #     return convert_to_one_hot(text, tokenizer, lstm_length, vocabulary_size)
-def batch_gen(bug_contents, code_contents, file_oracle, method_oracle, tokenizer,vocabulary_size, lstm_length, nb_bugs, nb_negative_methods, embedding_dimension = -1, sample_num = 50):
 
-    pos_sample_num = int(math.floor(sample_num/2))
-    neg_sample_num = int(sample_num - pos_sample_num)
-    print(neg_sample_num, pos_sample_num)
+
+def batch_gen(bug_contents, code_contents, file_oracle, method_oracle, tokenizer,vocabulary_size, lstm_length, nb_bugs, nb_negative_methods, word2vec_model, embedding_dimension = -1, sample_num = 50, word2vec = False):
+
+    pos_sample_num = math.floor(sample_num/2)
+    neg_sample_num = sample_num - pos_sample_num
+    for i in range(nb_bugs):
+        bug_batch_pos = []
+        code_batch_pos = []
+        rel_batch_pos = []
+        # one-hot representation of bug
+
+        bug_seq = convert_to_lstm_input_form([bug_contents[i]], tokenizer,lstm_length, vocabulary_size, word2vec_model, embedding_dimension, word2vec )
+
+        if len(bug_seq) == 0:
+            print('void bug sequence after tokenization!')
+            continue
+        # positive instances for this bug
+        relevant_methods_str = method_oracle[i]
+        if len(relevant_methods_str)>1:
+            relevant_methods_list = relevant_methods_str.split("\t")
+            for one_method in relevant_methods_list:
+                #method_one_hot = convert_to_lstm_input_form(one_method, tokenizer,lstm_length, vocabulary_size)
+                method_seq = convert_to_lstm_input_form([one_method], tokenizer,lstm_length, vocabulary_size, word2vec_model, embedding_dimension, word2vec)
+                if len(method_seq) > 0:
+                    bug_batch_pos.append(bug_seq[0])
+                    code_batch_pos.append(method_seq[0])
+                    rel_batch_pos.append(1)
+
+            bug_batch_pos, code_batch_pos, rel_batch_pos = random_select(bug_batch_pos, code_batch_pos, rel_batch_pos, pos_sample_num)
+        # negative instances for this bug
+
+        bug_batch_neg = []
+        code_batch_neg = []
+        rel_batch_neg = []
+        negative_code_index_list = file_oracle[i][1]
+        for one_code_index_list in negative_code_index_list:
+            neg_method_list = get_top_methods_in_file(code_contents[one_code_index_list], lstm_length, nb_negative_methods, tokenizer)
+            for one_method in neg_method_list:
+                method_seq = convert_to_lstm_input_form([one_method], tokenizer,lstm_length, vocabulary_size, word2vec_model, embedding_dimension, word2vec)
+                if len(method_seq) > 0:
+                    bug_batch_neg.append(bug_seq[0])
+                    code_batch_neg.append(method_seq[0])
+                    rel_batch_neg.append(0)
+        bug_batch_neg, code_batch_neg, rel_batch_neg = random_select(bug_batch_neg, code_batch_neg, rel_batch_neg, neg_sample_num)
+        bug_batch = bug_batch_pos + bug_batch_neg
+        code_batch = code_batch_pos + code_batch_neg
+        rel_batch = rel_batch_pos + rel_batch_neg
+        #if sample_num < len(bug_batch):
+        #bug_batch, code_batch, rel_batch = random_select(bug_batch, code_batch,rel_batch, sample_num)
+        yield np.asarray(bug_batch), np.asarray(code_batch), np.asarray(rel_batch)
+
+
+def batch_gen_triplet(bug_contents, code_contents, file_oracle, method_oracle, tokenizer,vocabulary_size, lstm_length, nb_bugs, nb_negative_methods, embedding_dimension = -1, sample_num = 50):
     for i in range(nb_bugs):
         bug_batch_pos = []
         code_batch_pos = []
@@ -88,7 +154,7 @@ def batch_gen(bug_contents, code_contents, file_oracle, method_oracle, tokenizer
                     code_batch_pos.append(method_seq[0])
                     rel_batch_pos.append(1)
 
-            bug_batch_pos, code_batch_pos, rel_batch_pos = random_select(bug_batch_pos, code_batch_pos, rel_batch_pos, pos_sample_num)
+            bug_batch, code_batch_pos, rel_batch_pos = random_select(bug_batch_pos, code_batch_pos, rel_batch_pos, sample_num)
         # negative instances for this bug
 
         bug_batch_neg = []
@@ -103,15 +169,10 @@ def batch_gen(bug_contents, code_contents, file_oracle, method_oracle, tokenizer
                     bug_batch_neg.append(bug_seq[0])
                     code_batch_neg.append(method_seq[0])
                     rel_batch_neg.append(0)
-	if(len(bug_batch_neg) == 0):
-	    continue
-        bug_batch_neg, code_batch_neg, rel_batch_neg = random_select(bug_batch_neg, code_batch_neg, rel_batch_neg, neg_sample_num)
-        bug_batch = bug_batch_pos + bug_batch_neg
-        code_batch = code_batch_pos + code_batch_neg
-        rel_batch = rel_batch_pos + rel_batch_neg
+        bug_batch_neg, code_batch_neg, rel_batch_neg = random_select(bug_batch_neg, code_batch_neg, rel_batch_neg, sample_num)
         #if sample_num < len(bug_batch):
         #bug_batch, code_batch, rel_batch = random_select(bug_batch, code_batch,rel_batch, sample_num)
-        yield np.asarray(bug_batch), np.asarray(code_batch), np.asarray(rel_batch)
+        yield np.asarray(bug_batch_neg), np.asarray(code_batch_pos), np.asarray(code_batch_neg)
 
 def random_select(bug_batch, code_batch, rel_batch, sample_num):
     total_sample_num = len(bug_batch)
@@ -120,6 +181,7 @@ def random_select(bug_batch, code_batch, rel_batch, sample_num):
     sample_code_batch = [code_batch[i] for i in index_list]
     sample_rel_batch = [rel_batch[i] for i in index_list]
     return sample_bug_batch, sample_code_batch, sample_rel_batch
+
 
 def get_top_methods_in_file(file_content, max_len, max_num, tokenizer):
     method_list = []
@@ -153,52 +215,6 @@ def get_top_methods_in_file(file_content, max_len, max_num, tokenizer):
                 top_method_list.append(method_list[length_descend_order[i]])
 
     return top_method_list
-
-def convert_to_input(bug_contents, code_contents, vocabulary_size,  tokenizer,max_lstm_length = 200):
-
-    bug_seq = tokenizer.texts_to_sequences(bug_contents)
-    code_index_list = [0]
-    overall_code_seq = []
-    code_index = 0
-    doc_num = 10
-    for one_file in code_contents:
-        #if the whole file is shorter than the length, then use the whole file content
-        one_file_seq = tokenizer.texts_to_sequences([one_file])[0]
-        if len(one_file_seq) < max_lstm_length:
-            overall_code_seq.append(one_file_seq)
-            code_index = code_index + 1
-        #else use the top-10 documents to represent the whole file
-        else:
-            doc_seq_list = []
-            lengths = []
-            methods = one_file.split('\t')
-            for one_method in methods:
-                if len(one_method)>0:
-                    one_method_seq = tokenizer.texts_to_sequences([one_method])
-                    lengths.append(len(one_method_seq[0]))
-                    doc_seq_list.append(one_method_seq[0])
-            if len(lengths) < doc_num:
-                overall_code_seq = overall_code_seq+doc_seq_list
-                code_index = code_index + len(lengths)
-            else:
-                length_descend_order = [i[0] for i in sorted(enumerate(lengths), key=lambda x:x[1], reverse=True)]
-                for i in range(doc_num):
-                    overall_code_seq.append(doc_seq_list[length_descend_order[i]])
-                code_index = code_index + doc_num
-
-        code_index_list.append(code_index)
-
-        #code_seq = tokenizer.texts_to_sequences(code_contents)
-
-    zero_padded_seq = pad_sequences(bug_seq+overall_code_seq, maxlen =max_lstm_length, padding = 'post', truncating='post')
-    zero_padded_bug_seq = zero_padded_seq[0:len(bug_seq)]
-
-    zero_padded_code_seq = zero_padded_seq[len(bug_seq):]
-
-    bug_seq = transform_to_one_hot(zero_padded_bug_seq, vocabulary_size)
-    code_seq = transform_to_one_hot(zero_padded_code_seq, vocabulary_size)
-
-    return(bug_seq,code_seq,code_index_list)
 
 def split_samples(bug_seq,code_seq,method_index_list,oracle,ratio = 0.8):
 

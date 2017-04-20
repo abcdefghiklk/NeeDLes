@@ -25,6 +25,8 @@ def parse_config(config_file_path):
     model_dir_path = config.get('input_output_paths','model_dir_path')
     evaluation_path = config.get('input_output_paths','evaluation_path')
 
+
+
     issue_field = 'description'
     if config.has_option('options','issue_field'):
         issue_field =  config.get('options','issue_field')
@@ -51,6 +53,9 @@ def parse_config(config_file_path):
 
     run_python_str = '/usr/local/python27/bin/python main.py -b {} -c {} -f {} -m {} -d {} -e {}'.format(bug_contents_path, code_contents_path, file_oracle_path, method_oracle_path, model_dir_path, evaluation_path)
 
+    if config.has_option('input_output_paths','word2vec_model_path'):
+        word2vec_model_path =  config.get('input_output_paths','word2vec_model_path')
+        run_python_str = run_python_str + ' --wp {}'.format(word2vec_model_path)
 
     if config.has_option('oracle_reader','vocabulary_size'):
         vocabulary_size = config.getint('oracle_reader','vocabulary_size')
@@ -75,6 +80,9 @@ def parse_config(config_file_path):
     if config.has_option('oracle_reader','embedding_dimension'):
         embedding_dimension = config.getint('oracle_reader','embedding_dimension')
         run_python_str = run_python_str + ' --em {}'.format(embedding_dimension)
+    if config.has_option('oracle_reader','word2vec'):
+        word2vec = config.getboolean('oracle_reader','word2vec')
+        run_python_str = run_python_str + ' --w {}'.format(word2vec)
     if config.has_option('network_structure','lstm_core_length'):
         lstm_core_length = config.getint('network_structure','lstm_core_length')
         run_python_str = run_python_str + ' --l {}'.format(lstm_core_length)

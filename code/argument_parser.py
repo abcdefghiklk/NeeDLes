@@ -29,6 +29,9 @@ def parseArgs():
 
 
     #optional arguments:
+
+    parser.add_argument('--wp', action = 'store', dest = 'word2vec_model_path', help = 'The path containing the word2vec model.')
+
     parser.add_argument('--v', action = 'store', type = int, dest = 'vocabulary_size', help = 'The vocabulary size used for one-hot representation of each word.', default = 300)
 
     parser.add_argument('--l', action = 'store', type = int, dest = 'lstm_core_length', help = 'The lstm unit length.', default = 20)
@@ -73,6 +76,7 @@ def parseArgs():
     parser.add_argument('--k', action = 'store', type = int, dest = 'k_value', help = 'The value of k in the top-k measure.', default = 10)
 
     parser.add_argument('--th', action = 'store', type = float, dest = 'rel_threshold', help = 'The threshold to judge relevance.', default = 0.5)
+    parser.add_argument('--w', action = 'store', type = bool, dest = 'word2vec', help = 'The flag controlling if word2vec is adopted.')
 
     args = parser.parse_args()
     return(args)
@@ -183,5 +187,5 @@ def parse_optimizer(args):
         if args.rho is not None:
             if len(args.rho) == 1:
                 rho = args.rho[0]
-        optimizer = RMSprop(lr = lr, rho = rho, epsilon = epsilon, decay = decay,clipvalue = 0.5)
+        optimizer = RMSprop(lr = lr, rho = rho, epsilon = epsilon, decay = decay, clipvalue = 0.5)
     return optimizer

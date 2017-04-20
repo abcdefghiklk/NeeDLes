@@ -26,6 +26,7 @@ def parse_config(config_file_path):
     model_dir_path = file_paths_config['model_dir_path']
     evaluation_path = file_paths_config['evaluation_path']
 
+
     oracle_generator_config = config['oracle_generator']
     issue_field = 'description'
     if 'issue_field' in oracle_generator_config:
@@ -54,6 +55,9 @@ def parse_config(config_file_path):
 
     run_python_str = 'python main.py -b {} -c {} -f {} -m {} -d {} -e {}'.format(bug_contents_path, code_contents_path, file_oracle_path, method_oracle_path, model_dir_path, evaluation_path)
 
+    if 'word2vec_model_path' in file_paths_config:
+        word2vec_model_path = file_paths_config['word2vec_model_path']
+        run_python_str = run_python_str + ' --wp {}'.format(word2vec_model_path)
 
     oracle_reader_config = config['oracle_reader']
     if 'vocabulary_size' in oracle_reader_config:
@@ -79,6 +83,10 @@ def parse_config(config_file_path):
     if 'embedding_dimension' in oracle_reader_config:
         embedding_dimension = int(oracle_reader_config['embedding_dimension'])
         run_python_str = run_python_str + ' --em {}'.format(embedding_dimension)
+    if 'word2vec' in oracle_reader_config:
+        word2vec = bool(oracle_reader_config['word2vec'])
+        run_python_str = run_python_str + ' --w {}'.format(embedding_dimension)
+
     network_structure_config = config['network_structure']
     if 'lstm_core_length' in network_structure_config:
         lstm_core_length = int(network_structure_config['lstm_core_length'])
@@ -150,7 +158,7 @@ def parse_config(config_file_path):
 if __name__ == '__main__':
     args = parseArgs()
     parse_config(args.config_file_path)
-    #parse_config('../config/NeeDLes_tomcat.ini')
+    # parse_config('../config/NeeDLes_tomcat.ini')
 
 
    # run_jar_str ='java -jar C:/Users/dell/Dropbox/NeeDLes/data/Hyloc_data/OracleGenerator.jar -i {} -d {} -x {} -c {} -b {} -o {}'.format(its_file_path,project_dir_path,code_index_path,code_content_path,bug_content_path,oracle_path)

@@ -16,17 +16,25 @@ from evaluation import *
 import keras.preprocessing.text as text
 import argparse
 from argument_parser import *
+import gensim
+from gensim.corpora import WikiCorpus
+from gensim.models import Word2Vec, KeyedVectors
 
-
-def main_siamese_lstm(bug_contents_path, code_contents_path, file_oracle_path, method_oracle_path, model_dir_path, evaluation_file_path, vocabulary_size, lstm_core_length, lstm_seq_length = 200, neg_method_num = 10, sample_num = 50, split_ratio = 0.8, activation_function = 'tanh', inner_activation_function = 'hard_sigmoid', distance_function = 'cos', initializer = 'glorot_uniform', inner_initializer = 'orthogonal', regularizer = None, optimizer = RMSprop(lr=0.001, rho = 0.9, epsilon=1e-8, decay=0.0), dropout = 0.0, epoch_num = 100, k_value = 10, rel_threshold = 0.5, embedding_dimension = -1):
+def main_siamese_lstm(bug_contents_path, code_contents_path, file_oracle_path, method_oracle_path, model_dir_path, evaluation_file_path, vocabulary_size, lstm_core_length, word2vec_model_path = None, lstm_seq_length = 200, neg_method_num = 10, sample_num = 50, split_ratio = 0.8, activation_function = 'tanh', inner_activation_function = 'hard_sigmoid', distance_function = 'cos', initializer = 'glorot_uniform', inner_initializer = 'orthogonal', regularizer = None, optimizer = RMSprop(lr=0.001, rho = 0.9, epsilon=1e-8, decay=0.0), dropout = 0.0, epoch_num = 100, k_value = 10, rel_threshold = 0.5, embedding_dimension = -1, word2vec = False):
 
     if not os.path.isdir(model_dir_path):
         os.mkdir(model_dir_path)
+
+    word2vec_model = None
+    if word2vec == True:
+        print("loading word2vec model:")
+        word2vec_model = KeyedVectors.load_word2vec_format(word2vec_model_path, binary=True)
+        print("finished loading word2vec model.")
     #method_oracle_path = "C:/Users/dell/Dropbox/NeeDLes/data/Hyloc_data/tomcat_relevant_methods.txt"
 
     #loading data from file
     print("loading data from file:")
-    [bug_contents,code_contents,file_oracle, method_oracle] = load_data(bug_contents_path, code_contents_path, file_oracle_path, method_oracle_path,encoding = 'utf-8')
+    [bug_contents,code_contents,file_oracle, method_oracle] = load_data(bug_contents_path, code_contents_path, file_oracle_path, method_oracle_path, encoding = 'utf-8')
     print("finished loading data from file.")
 
     print("initializing tokenizer:")
@@ -37,11 +45,12 @@ def main_siamese_lstm(bug_contents_path, code_contents_path, file_oracle_path, m
 
 
     print("building lstm siamese network:")
-    model = siamese_lstm(lstm_seq_length, vocabulary_size, lstm_core_length, activation_function = activation_function, inner_activation_function = inner_activation_function, distance_function = distance_function, initializer = initializer, inner_initializer = inner_initializer, regularizer = regularizer, optimizer = optimizer, dropout = dropout, embedding_dimension=embedding_dimension)
+    model = siamese_lstm(lstm_seq_length, vocabulary_size, lstm_core_length, activation_function = activation_function, inner_activation_function = inner_activation_function, distance_function = distance_function, initializer = initializer, inner_initializer = inner_initializer, regularizer = regularizer, optimizer = optimizer, dropout = dropout, embedding_dimension = embedding_dimension)
 
     #save the model structure to file
     model_structure_path = os.path.join(model_dir_path, "model_structure")
-    save_model_structure(model,model_structure_path)
+    save_model_structure(model, model_structure_path)
+
     print("finished building lstm siamese network.")
 
 
@@ -49,10 +58,9 @@ def main_siamese_lstm(bug_contents_path, code_contents_path, file_oracle_path, m
     for epoch in range(epoch_num):
         print("training epoch {}:".format(epoch))
         batch_index = 1
-        for bug_batch, code_batch, label_batch in batch_gen(bug_contents, code_contents, file_oracle, method_oracle, tokenizer, vocabulary_size, lstm_seq_length, nb_train_bug, neg_method_num, embedding_dimension= embedding_dimension, sample_num = sample_num):
+        for bug_batch, code_batch, label_batch in batch_gen(bug_contents, code_contents, file_oracle, method_oracle, tokenizer, vocabulary_size, lstm_seq_length, nb_train_bug, neg_method_num,word2vec_model, embedding_dimension= embedding_dimension, sample_num = sample_num,  word2vec = word2vec):
             print("training batch {}, size {}".format(batch_index, len(bug_batch)))
-            print(bug_batch.shape)
-	    model.train_on_batch([bug_batch, code_batch], label_batch)
+            model.train_on_batch([bug_batch, code_batch], label_batch)
             batch_index = batch_index + 1
         #save the model weights after this epoch to file
         one_epoch_weight_path = os.path.join(model_dir_path, "weight_epoch_{}".format(epoch))
@@ -81,32 +89,34 @@ def main_siamese_lstm(bug_contents_path, code_contents_path, file_oracle_path, m
     print("finished writing evalution performance to file.")
 
 
-def generate_code_vec(model, code_contents, lstm_seq_length, neg_method_num, tokenizer, vocabulary_size, embedding_dimension = -1):
+def generate_code_vec(model, code_contents, lstm_seq_length, neg_method_num, tokenizer, vocabulary_size, word2vec_model, embedding_dimension = -1, word2vec = False):
     network_code_vec = get_code_vec_network(model)
     code_vec_list = []
     for one_code_content in code_contents:
         one_code_vec = []
         method_list = get_top_methods_in_file(one_code_content, lstm_seq_length, neg_method_num, tokenizer)
         for one_method in method_list:
-            method_seq = convert_to_lstm_input_form([one_method], tokenizer,lstm_seq_length, vocabulary_size, embedding_dimension = embedding_dimension)
+            method_seq = convert_to_lstm_input_form([one_method], tokenizer,lstm_seq_length, vocabulary_size, word2vec_model,embedding_dimension = embedding_dimension, word2vec = word2vec)
             if len(method_seq) == 0:
                 continue
+
             method_seq = np.asarray(method_seq[0])
             prediction = network_code_vec([[method_seq]])
+
             method_vec = prediction[0][0]
             one_code_vec.append(method_vec)
-        code_vec_list.append(code_vec_list)
+        code_vec_list.append(one_code_vec)
     return code_vec_list
 
-def generate_bug_vec(model, bug_contents, lstm_seq_length, neg_method_num, tokenizer, vocabulary_size, embedding_dimension = -1):
+def generate_bug_vec(model, bug_contents, lstm_seq_length, neg_method_num, tokenizer, vocabulary_size, word2vec_model, embedding_dimension = -1, word2vec = False):
     network_bug_vec = get_bug_vec_network(model)
     bug_vec_list = []
     for one_bug_content in bug_contents:
-        bug_seq = convert_to_lstm_input_form([one_bug_content], tokenizer,lstm_seq_length, vocabulary_size, embedding_dimension = embedding_dimension)
+        bug_seq = convert_to_lstm_input_form([one_bug_content], tokenizer,lstm_seq_length, vocabulary_size, word2vec_model,embedding_dimension = embedding_dimension, word2vec = word2vec)
         if len(bug_seq) == 0:
-           continue
+                continue
         bug_seq = np.asarray(bug_seq[0])
-        prediction = network_code_vec([[bug_seq]])
+        prediction = network_bug_vec([[bug_seq]])
         bug_vec = prediction[0][0]
         bug_vec_list.append(bug_vec)
     return bug_vec_list
@@ -143,7 +153,7 @@ def generate_predictions_generator(bug_vec_list, code_vec_list, test_oracle):
 def main():
     args = parseArgs();
     optimizer = parse_optimizer(args)
-    main_siamese_lstm(args.bug_contents_path, args.code_contents_path, args.file_oracle_path, args.method_oracle_path, args.model_dir_path, args.evaluation_path, args.vocabulary_size, args.lstm_core_length, lstm_seq_length = args.lstm_seq_length, neg_method_num = args.neg_method_num, split_ratio = args.split_ratio, sample_num = args.sample_num, activation_function = args.activation_function, inner_activation_function = args.inner_activation_function, distance_function = args.distance_function, initializer = args.initializer, inner_initializer = args.inner_initializer, regularizer = args.regularizer, optimizer = optimizer, dropout = args.dropout, epoch_num = args.epoch_num, k_value = args.k_value, rel_threshold = args.rel_threshold, embedding_dimension = args.embedding_dimension)
+    main_siamese_lstm(args.bug_contents_path, args.code_contents_path, args.file_oracle_path, args.method_oracle_path, args.model_dir_path, args.evaluation_path, args.vocabulary_size, args.lstm_core_length, word2vec_model_path = args.word2vec_model_path, lstm_seq_length = args.lstm_seq_length, neg_method_num = args.neg_method_num, split_ratio = args.split_ratio, sample_num = args.sample_num, activation_function = args.activation_function, inner_activation_function = args.inner_activation_function, distance_function = args.distance_function, initializer = args.initializer, inner_initializer = args.inner_initializer, regularizer = args.regularizer, optimizer = optimizer, dropout = args.dropout, epoch_num = args.epoch_num, k_value = args.k_value, rel_threshold = args.rel_threshold, embedding_dimension = args.embedding_dimension, word2vec = args.word2vec)
 if __name__ == '__main__':
     start = time.clock()
     main()
