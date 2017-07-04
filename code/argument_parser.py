@@ -23,9 +23,10 @@ def parseArgs():
     parser.add_argument('-b', action = 'store', dest = 'bug_contents_path', help='The path containing all bug contents.')
     parser.add_argument('-c', action = 'store', dest = 'code_contents_path', help='The path containing the code contents.')
     parser.add_argument('-f', action = 'store', dest = 'file_oracle_path', help = 'The path containing the code contents.')
-    parser.add_argument('-m', action = 'store', dest = 'method_oracle_path', help = 'The path containing the relevance pairs between bug index and method contents.')
+    parser.add_argument('-s', action = 'store', dest = 'sequence_oracle_path', help = 'The path containing the relevance pairs between bug index and sequence contents.')
     parser.add_argument('-d', action = 'store', dest = 'model_dir_path', help = 'The diectory path saving model structure and weights for each training epoch.')
-    parser.add_argument('-e', action = 'store', dest = 'evaluation_path', help = 'The path containing the relevance pairs between bug index and code index.')
+    parser.add_argument('-p', action = 'store', dest = 'prediction_dir_path', help = 'The diectory path containing prediction results for each test bug.')
+    parser.add_argument('-e', action = 'store', dest = 'evaluation_path', help = 'The path storing the evaluation results.')
 
 
     #optional arguments:
@@ -37,8 +38,6 @@ def parseArgs():
     parser.add_argument('--l', action = 'store', type = int, dest = 'lstm_core_length', help = 'The lstm unit length.', default = 20)
 
     parser.add_argument('--s', action = 'store', type = int, dest = 'lstm_seq_length', help = 'The length of input lstm sequence.', default = 200)
-
-    parser.add_argument('--n', action = 'store', type = int, dest = 'neg_method_num', help = 'The number of longest methods to represent the code file.', default = 10)
 
     parser.add_argument('--sr', action = 'store', type = float, dest = 'split_ratio', help = 'The ratio of all samples used as training data.', default = 0.8)
 

@@ -54,4 +54,18 @@ def evaluate_one_bug(predictions,positive_index,k = 10,rel_threshold = 0.65):
         topk = 1
     else:
         topk = 0
-    return precision,recall,average_precision,mrr,topk
+    return average_precision,mrr,topk
+
+
+def export_evaluation(evaluations, evaluation_file_path):
+    data_output = codecs.open(evaluation_file_path,'w')
+    for one_evaluation in evaluations:
+        evaluation_string = "avg_precision = {}\t mrr = {}\ttopk = {}\n".format(one_evaluation[0],one_evaluation[1],one_evaluation[2])
+        data_output.write(evaluation_string)
+    data_output.close()
+
+def export_one_evaluation(one_evaluation, evaluation_file_path):
+    data_output = codecs.open(evaluation_file_path,'a+')
+    evaluation_string = "avg_precision = {}\t mrr = {}\ttopk = {}\n".format(one_evaluation[0],one_evaluation[1],one_evaluation[2])
+    data_output.write(evaluation_string)
+    data_output.close()

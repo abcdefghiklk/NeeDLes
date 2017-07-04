@@ -1,7 +1,7 @@
 import configparser
 import os
 import argparse
-from main import main_siamese_lstm
+from main_siamese_lstm import main_siamese_lstm
 def parseArgs():
 
     #required arguments:
@@ -22,8 +22,9 @@ def parse_config(config_file_path):
     code_contents_path = file_paths_config['code_contents_path']
     bug_contents_path = file_paths_config['bug_contents_path']
     file_oracle_path = file_paths_config['file_oracle_path']
-    method_oracle_path = file_paths_config['method_oracle_path']
+    sequence_oracle_path = file_paths_config['sequence_oracle_path']
     model_dir_path = file_paths_config['model_dir_path']
+    prediction_dir_path = file_paths_config['prediction_dir_path']
     evaluation_path = file_paths_config['evaluation_path']
 
 
@@ -53,7 +54,7 @@ def parse_config(config_file_path):
         neg_sample_number = oracle_generator_config['neg_sample_number']
 
 
-    run_python_str = 'python main.py -b {} -c {} -f {} -m {} -d {} -e {}'.format(bug_contents_path, code_contents_path, file_oracle_path, method_oracle_path, model_dir_path, evaluation_path)
+    run_python_str = 'python main_siamese_lstm.py -b {} -c {} -f {} -s {} -d {} -p {} -e {}'.format(bug_contents_path, code_contents_path, file_oracle_path, sequence_oracle_path, model_dir_path, prediction_dir_path, evaluation_path)
 
     if 'word2vec_model_path' in file_paths_config:
         word2vec_model_path = file_paths_config['word2vec_model_path']
@@ -67,10 +68,6 @@ def parse_config(config_file_path):
     if 'lstm_seq_length' in oracle_reader_config:
         lstm_seq_length = int(oracle_reader_config['lstm_seq_length'])
         run_python_str = run_python_str + ' --s {}'.format(lstm_seq_length)
-
-    if 'neg_method_num' in oracle_reader_config:
-        neg_method_num = int(oracle_reader_config['neg_method_num'])
-        run_python_str = run_python_str + ' --n {}'.format(neg_method_num)
 
     if 'split_ratio' in oracle_reader_config:
         split_ratio = float(oracle_reader_config['split_ratio'])

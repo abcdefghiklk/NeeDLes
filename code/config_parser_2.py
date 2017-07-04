@@ -1,7 +1,7 @@
 import ConfigParser
 import os
 import argparse
-from main import main_siamese_lstm
+from main_siamese_lstm import main_siamese_lstm
 
 def parseArgs():
 
@@ -21,11 +21,10 @@ def parse_config(config_file_path):
     code_contents_path = config.get('input_output_paths','code_contents_path')
     bug_contents_path = config.get('input_output_paths','bug_contents_path')
     file_oracle_path = config.get('input_output_paths','file_oracle_path')
-    method_oracle_path = config.get('input_output_paths','method_oracle_path')
+    sequence_oracle_path = config.get('input_output_paths','sequence_oracle_path')
     model_dir_path = config.get('input_output_paths','model_dir_path')
+    prediction_dir_path = config.get('input_output_paths','prediction_dir_path')
     evaluation_path = config.get('input_output_paths','evaluation_path')
-
-
 
     issue_field = 'description'
     if config.has_option('options','issue_field'):
@@ -51,7 +50,7 @@ def parse_config(config_file_path):
     if config.has_option('options','neg_sample_number'):
         neg_sample_number =  config.get('options','neg_sample_number')
 
-    run_python_str = '/usr/local/python27/bin/python main.py -b {} -c {} -f {} -m {} -d {} -e {}'.format(bug_contents_path, code_contents_path, file_oracle_path, method_oracle_path, model_dir_path, evaluation_path)
+    run_python_str = '/usr/local/python27/bin/python main_siamese_lstm.py -b {} -c {} -f {} -s {} -d {} -p {} -e {}'.format(bug_contents_path, code_contents_path, file_oracle_path, sequence_oracle_path, model_dir_path, prediction_dir_path, evaluation_path)
 
     if config.has_option('input_output_paths','word2vec_model_path'):
         word2vec_model_path =  config.get('input_output_paths','word2vec_model_path')
@@ -64,10 +63,6 @@ def parse_config(config_file_path):
     if config.has_option('oracle_reader','lstm_seq_length'):
         lstm_seq_length = config.getint('oracle_reader','lstm_seq_length')
         run_python_str = run_python_str + ' --s {}'.format(lstm_seq_length)
-
-    if config.has_option('oracle_reader','neg_method_num'):
-        neg_method_num = config.getint('oracle_reader','neg_method_num')
-        run_python_str = run_python_str + ' --n {}'.format(neg_method_num)
 
     if config.has_option('oracle_reader','split_ratio'):
         split_ratio = config.getfloat('oracle_reader','split_ratio')

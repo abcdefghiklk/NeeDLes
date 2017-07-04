@@ -6,34 +6,21 @@ import numpy as np
 import argparse
 import time
 import re
+import math
 
 def form(value):
     return "%.3f" % value
 
-def export_one_bug_prediction(oracle, prediction, file_path):
-    data_out = codecs.open(file_path,'w')
-    data_out.write(str(oracle))
-    data_out.write("\n")
-    prediction_str = [form(a) for a in prediction]
-    data_out.write(str(prediction_str))
-    data_out.close()
-
-def export_predictions(oracle_list, prediction_list, dir_path):
-    for i in range(len(oracle_list)):
-
-        file_path = os.path.join(dir_path, "prediction_{}".format(i))
-        export_one_bug_prediction(oracle_list[i], prediction_list[i], file_path)
-
-def load_data(bug_content_path, code_content_path, file_oracle_path, method_oracle_path, encoding = 'gbk'):
-    code_contents = load_contents(code_content_path, encoding)
-    bug_contents = load_contents(bug_content_path, encoding)
-    method_oracle = load_relevant_methods(method_oracle_path)
+def load_data(bug_content_path, code_content_path, file_oracle_path, method_oracle_path, split_length = -1, encoding = 'gbk'):
+    code_contents = load_code_contents(code_content_path, split_length = split_length, encoding = encoding)
+    bug_contents = load_bug_contents(bug_content_path, encoding = encoding)
+    method_oracle = load_code_contents(method_oracle_path, encoding = encoding)
     file_oracle = read_oracle(file_oracle_path)
 
     return(bug_contents,code_contents, file_oracle, method_oracle)
 
 
-def load_contents(file_path, encoding = 'gbk'):
+def load_bug_contents(file_path, encoding = 'gbk'):
     data_input = codecs.open(file_path, encoding = encoding)
     lines = data_input.readlines()
     data_input.close()
@@ -43,13 +30,31 @@ def load_contents(file_path, encoding = 'gbk'):
             content_list.append(line.strip())
     return content_list
 
-def load_relevant_methods(file_path):
-    data_input = codecs.open(file_path)
+def load_code_contents(file_path, split_length = -1, encoding = 'gbk'):
+    data_input = codecs.open(file_path, encoding = encoding)
     lines = data_input.readlines()
     data_input.close()
     content_list = []
     for line in lines:
-        content_list.append(line)
+        if len(line.strip())<=2:
+            content_list.append([])
+        else:
+            method_list = line.strip().split('\t')
+            if split_length == -1:
+                content_list.append(method_list)
+            else:
+                chunk_list = []
+                for one_method in method_list:
+                    terms = one_method.split(' ')
+                    chunk_num = int(math.ceil(len(terms)/split_length))
+                    for i in range(chunk_num):
+                        start = i*split_length
+                        end = (i+1)*split_length
+                        if end > len(terms):
+                            end = len(terms)
+                        chunk_list.append(one_method[start:end])
+                content_list.append(chunk_list)
+
     return content_list
 
 def read_oracle(oracle_file_path):
@@ -80,18 +85,7 @@ def read_oracle(oracle_file_path):
     oracle_per_bug.append([positive_index_list,negative_index_list])
     return oracle_per_bug
 
-def export_evaluation(evaluations, evaluation_file_path):
-    data_output = codecs.open(evaluation_file_path,'w')
-    for one_evaluation in evaluations:
-        evaluation_string = "precision = {}\trecall = {}\tavg_precision = {}\t mrr = {}\ttopk = {}\n".format(one_evaluation[0],one_evaluation[1],one_evaluation[2],one_evaluation[3],one_evaluation[4])
-        data_output.write(evaluation_string)
-    data_output.close()
 
-def export_one_evaluation(one_evaluation, evaluation_file_path):
-    data_output = codecs.open(evaluation_file_path,'a+')
-    evaluation_string = "precision = {}\trecall = {}\tavg_precision = {}\t mrr = {}\ttopk = {}\n".format(one_evaluation[0],one_evaluation[1],one_evaluation[2],one_evaluation[3],one_evaluation[4])
-    data_output.write(evaluation_string)
-    data_output.close()
 
 
 
